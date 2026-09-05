@@ -614,9 +614,16 @@ constructor(
                     }
                 } ?: emptyList()
 
+            database.transaction {
+                onlineResults.forEach { songItem ->
+                    try {
+                        insert(songItem.toMediaMetadata())
+                    } catch (e: Exception) {
+                    }
+                }
+            }
             onlineResults.forEach { songItem ->
                 try {
-                    database.query { insert(songItem.toMediaMetadata()) }
                     database.song(songItem.id).first()?.let { newSong ->
                         searchResults.add(newSong)
                     }

@@ -1319,7 +1319,7 @@ class MusicService :
         }
     }
 
-    private fun createExoPlayer(prefs: Preferences? = null): ExoPlayer {
+    private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
         val normalizationProcessor = VolumeNormalizationAudioProcessor().also {
             it.enabled = cachedNormalizationEnabled
             cachedNormalizationGainMb?.let { gain -> it.setTargetGain(gain) }
@@ -1329,18 +1329,17 @@ class MusicService :
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
 
         // Set initial state — use pre-read prefs when available, otherwise fall back to DataStore
-        val useAudioTrackPlaybackParams = if (prefs != null) {
-            val skipSilence = prefs[SkipSilenceKey] ?: false
-            val instantSkip = prefs[SkipSilenceInstantKey] ?: false
+        val effectivePrefs = prefs ?: startupPrefs
+        val useAudioTrackPlaybackParams = if (effectivePrefs != null) {
+            val skipSilence = effectivePrefs[SkipSilenceKey] ?: false
+            val instantSkip = effectivePrefs[SkipSilenceInstantKey] ?: false
             silenceProcessor.instantModeEnabled = skipSilence && instantSkip
-            prefs[AudioTrackPlaybackParamsKey] ?: true
+            effectivePrefs[AudioTrackPlaybackParamsKey] ?: true
         } else {
-            runBlocking {
-                val skipSilence = dataStore.get(SkipSilenceKey, false)
-                val instantSkip = dataStore.get(SkipSilenceInstantKey, false)
-                silenceProcessor.instantModeEnabled = skipSilence && instantSkip
-                dataStore.get(AudioTrackPlaybackParamsKey, true)
-            }
+            val skipSilence = dataStore.get(SkipSilenceKey, false)
+            val instantSkip = dataStore.get(SkipSilenceInstantKey, false)
+            silenceProcessor.instantModeEnabled = skipSilence && instantSkip
+            dataStore.get(AudioTrackPlaybackParamsKey, true)
         }
 
         val player =
@@ -1859,7 +1858,7 @@ class MusicService :
             }
 
             if (player.shuffleModeEnabled) {
-                val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                val shufflePlaylistFirst = cachedShufflePlaylistFirst
                 applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
             }
         }
@@ -1919,7 +1918,7 @@ class MusicService :
 
                     player.addMediaItems(currentIndex + 1, radioItems)
                     if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+                        val shufflePlaylistFirst = cachedShufflePlaylistFirst
                         applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
                     }
                 }
@@ -2181,7 +2180,7 @@ class MusicService :
 
         player.addMediaItems(items)
         if (player.shuffleModeEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = cachedShufflePlaylistFirst
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
         player.prepare()
@@ -2807,7 +2806,7 @@ class MusicService :
         if (shuffleModeEnabled) {
             if (player.mediaItemCount == 0) return
 
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = cachedShufflePlaylistFirst
             val currentIndex = player.currentMediaItemIndex
             val totalCount = player.mediaItemCount
 
@@ -4785,9 +4784,9 @@ class MusicService :
 
 
         // Preserve player state before creating the secondary player
-        // Use runBlocking to ensure we get the correct state from DataStore
-        val savedRepeatMode = runBlocking { dataStore.get(RepeatModeKey, REPEAT_MODE_OFF) }
-        val savedShuffleEnabled = runBlocking { dataStore.get(ShuffleModeKey, false) }
+        // Use in-memory player state to avoid blocking DataStore disk reads during playback transition
+        val savedRepeatMode = player.repeatMode
+        val savedShuffleEnabled = player.shuffleModeEnabled
 
         // For repeat-one, crossfade back into the same track
         val targetIndex =
@@ -4833,7 +4832,7 @@ class MusicService :
         performCrossfadeSwap()
 
         if (savedShuffleEnabled) {
-            val shufflePlaylistFirst = dataStore.get(ShufflePlaylistFirstKey, false)
+            val shufflePlaylistFirst = cachedShufflePlaylistFirst
             applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
         }
     }
