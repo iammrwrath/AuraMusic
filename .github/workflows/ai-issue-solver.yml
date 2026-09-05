@@ -1,0 +1,100 @@
+name: AI Self-Healing Issue Solver
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: ai-fix-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  solve_issue:
+    name: Diagnose and Fix Issue
+    if: >-
+      contains(github.event.issue.labels.*.name, 'ai-fix') ||
+      contains(github.event.issue.title, '[AI-Fix]') ||
+      contains(github.event.issue.title, '[Crash]') ||
+      contains(github.event.issue.title, '[Bug]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Acknowledge Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "🤖 **Antigravity AI**: Issue received! Analyzing flight recorder logs, stack traces, and codebase to formulate an automated fix..."
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run AI Diagnostic & Code Patching
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          python3 .github/scripts/ai_issue_solver.py
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Compile and Verify Fix (assembleFossDebug)
+        run: ./gradlew assembleFossDebug --no-daemon
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-foss-debug-issue-${{ github.event.issue.number }}
+          path: app/build/outputs/apk/foss/debug/app-foss-debug.apk
+
+      - name: Create Pull Request & Notify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          git add -A
+          git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}"
+          git push origin "$BRANCH_NAME" --force
+
+          PR_URL=$(gh pr create \
+            --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" \
+            --body-file "ai_solution_summary.md" \
+            --head "$BRANCH_NAME" \
+            --base "our-fixes" || gh pr create --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" --body-file "ai_solution_summary.md" --head "$BRANCH_NAME" --base "main")
+
+          gh issue comment "$ISSUE_NUMBER" --body "$(cat ai_solution_summary.md)
+
+          ---
+          ✅ **Build Status**: Verified & compiled cleanly!
+          🔗 **Pull Request**: ${PR_URL}
+          📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!"
