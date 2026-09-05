@@ -45,37 +45,43 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
         releaseDate = "2026-09-05",
         description = """
-## 🎧 AuraMusic — Initial Release
+## 🎧 AuraMusic — Initial & Performance Release
 
-### ✨ New Features
+### 🚀 Google Pixel & Scrolling Performance
+- **120Hz Smooth Display Fix**: Resolved an issue where Pixel devices throttled down to 60Hz during Compose scrolling. Hardware display modes are now dynamically queried and locked to the maximum available refresh rate (120Hz/90Hz).
+- **List & Grid Scrolling Overhaul**: Eliminated hundreds of redundant DataStore flow subscriptions across song lists and album grids by hoisting swipe and album art preferences to root `CompositionLocal`s, drastically lowering garbage collection overhead and eliminating fling stutter.
+- **Scroll Behavior Optimization**: Removed duplicate nested scroll connections that fired redundant computations on every scroll event.
 
-#### Studio-Grade Automix DJ Transitions
-- **Equal-Power Crossfade**: Sinusoidal sin²+cos² blending ensures constant perceived volume across the entire transition — no dip or spike
-- **Smart Automix (DJ Mode)**: Adaptive transition duration scales to 15% of the shorter track; smart cue-in pre-roll trims silent intros by 200ms
-- **Bass-Swap Crossover**: Rolls off outgoing low frequencies past 55% of the transition to eliminate bass-line clash between tracks
-- Configurable mode picker in Player Settings (Off / Equal-Power Crossfade / Smart Automix)
+### 🎨 Visual Identity & Android 13+ Themed Icons
+- **Refreshed App Identity**: Cleanly branded as **AuraMusic** across all launcher targets and settings without debug suffixes.
+- **New App Icon**: Minimalist iridescent glowing musical aura ring with an integrated neon music note.
+- **Pixel Adaptive & Themed Icons**: High-resolution foregrounds tailored for Android 12+ adaptive masks, plus a native vector monochrome icon for Android 13+ Material You "Themed Icons".
 
-#### Android Auto Live Lyrics Projection
-- Synchronized karaoke lyrics are projected to your car's head unit in real time
-- 350ms ticker polls the lyrics timeline and updates the MediaSession subtitle field
-- Displays 🎤 for lyric lines, 🎵 [Instrumental] or 🎵 [Intro] for gaps
-- Toggle button added to Android Auto playback notification
-- Fetches from local Room DB cache first, falls back to network provider
+### ℹ️ About Screen & Developer Support
+- **Maintainer Focus**: Streamlined the About screen to highlight **@iammrwrath** as the sole Creator & Maintainer.
+- **1-Tap Developer Support**: Added direct buttons for the GitHub profile and developer support email (`iammrwrath@gmail.com`).
+- **Framework Attribution**: Clean attribution cards honoring foundational upstream engines (Metrolist & BitChord).
+- **Cleaned Community Links**: Removed obsolete third-party chat and coffee donation links.
 
-#### AI Diagnostics & Flight Recorder
-- One-tap "Report Issue (AI Auto-Fix)" — compiles device info, logs, and app state into a pre-filled GitHub issue
-- "Export Flight Recorder Logs" — share or save the session log as a text file
-- Diagnostic reports automatically filed to iammrwrath/AuraMusic
+### 🎛️ Studio-Grade Automix DJ Transitions
+- **Constant Equal-Power Law**: Sinusoidal (sin² + cos² ≡ 1.0) volume curves ensure consistent acoustic power throughout crossfades, eliminating midpoint volume dips.
+- **Smart Automix (DJ Mode)**: Automatically scales transition duration to 15% of track length and trims encoder pre-roll silence (~200ms) for punchy beat transitions.
+- **Bass-Swap Crossover**: Smoothly filters out outgoing low frequencies past 55% to eliminate muddy low-end clashes between kicks and basslines.
+- **Customizable**: Off / Equal-Power Crossfade / Smart Automix selectable in Player Settings.
 
-### 🐛 Bug Fixes & Optimizations
-- Recycled ExoPlayer cross-fade: increased to 30 smooth volume steps (was 20)
-- Android Auto voice search intent resolution fixed
-- Memory leak fix: car lyrics coroutine job properly cancelled in `onDestroy()`
-- Performance: LazyColumn item keys enforced across all list screens for faster diffing
-- Removed redundant redundant scroll bounce on song queue screen
+### 🚗 Android Auto Live Lyrics Projection
+- **Real-Time Karaoke Projection**: Streams synchronized lyrics directly onto car head unit displays via the MediaSession subtitle field.
+- **Interlude Awareness**: Displays 🎤 [Lyrics] during singing and 🎵 [Intro] or 🎵 [Instrumental] during instrumental breaks.
+- **Car Screen Controls**: Dedicated on-screen toggle button to enable or disable lyric projection with a single tap.
 
-### 📦 Credits
-Built on top of [Metrolist](https://github.com/MetrolistGroup/Metrolist) and inspired by [BitChord](https://github.com/kushagrasinghx/BitChord).
+### ⚡ Engine & Architecture Scalability
+- **Non-Blocking Background Dispatchers**: Migrated heavy YouTube API calls, artist queries, and playlist repair transactions off the Main thread onto Dispatchers.IO.
+- **Atomic Database Transactions**: Batched Android Auto search queries into single SQLite transactions, preventing disk thrashing and UI freezes.
+- **Zero-Block Player Transitions**: Replaced synchronous runBlocking calls during playback crossfades with fast in-memory player state checks.
+- **AI Diagnostics & Flight Recorder**: 1-tap issue reporter and flight recorder log exporter to quickly capture and diagnose session errors.
+
+### 📦 Universal Release
+- **Single Universal APK**: Unified build pipeline delivering one single universal APK (`AuraMusic.apk`) for seamless installation and updates.
         """.trimIndent(),
         assets = emptyList()
     )

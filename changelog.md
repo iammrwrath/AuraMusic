@@ -1,13 +1,42 @@
 ---v13.6.3
 
-# AuraMusic Initial Release
+# AuraMusic v13.6.3 — Performance & Identity Update
 
-### 🎧 Features & Enhancements
-- **Studio-Grade Automix DJ Transitions**: Equal-power sinusoidal volume ramp ($\sin^2 + \cos^2 \equiv 1.0$), adaptive duration scaling, intro silence trimming, and bass-swap crossover.
-- **Android Auto Live Lyrics Projection**: Real-time synchronized karaoke lyrics streamed to car displays with dedicated on-screen toggle button.
-- **120Hz Ultra-Smooth Scrolling**: Key-based item memoization and Coil memory cache expansion for fluid 120Hz/90Hz scrolling.
-- **Flight Recorder & AI Diagnostics**: 1-tap issue reporting with auto-generated logs and AI-powered fix triage.
-- **Rebrand**: App identity rebranded to AuraMusic, honoring upstream Metrolist and BitChord foundations.
+### 🚀 Google Pixel & Scrolling Performance
+- **120Hz Smooth Display Fix**: Resolved an issue where Pixel devices throttled down to 60Hz during Compose scrolling. Hardware display modes are now dynamically queried and locked to the maximum available refresh rate (120Hz/90Hz).
+- **List & Grid Scrolling Overhaul**: Eliminated hundreds of redundant DataStore flow subscriptions across song lists and album grids by hoisting swipe and album art preferences to root `CompositionLocal`s, drastically lowering garbage collection overhead and eliminating fling stutter.
+- **Scroll Behavior Optimization**: Removed duplicate nested scroll connections that fired redundant computations on every scroll event.
+
+### 🎨 Visual Identity & Android 13+ Themed Icons
+- **Refreshed App Identity**: Cleanly branded as **AuraMusic** across all launcher targets and settings without debug suffixes.
+- **New App Icon**: Minimalist iridescent glowing musical aura ring with an integrated neon music note.
+- **Pixel Adaptive & Themed Icons**: High-resolution foregrounds tailored for Android 12+ adaptive masks, plus a native vector monochrome icon for Android 13+ Material You "Themed Icons".
+
+### ℹ️ About Screen & Developer Support
+- **Maintainer Focus**: Streamlined the About screen to highlight **@iammrwrath** as the sole Creator & Maintainer.
+- **1-Tap Developer Support**: Added direct buttons for the GitHub profile and developer support email (`iammrwrath@gmail.com`).
+- **Framework Attribution**: Clean attribution cards honoring foundational upstream engines (Metrolist & BitChord).
+- **Cleaned Community Links**: Removed obsolete third-party chat and coffee donation links.
+
+### 🎛️ Studio-Grade Automix DJ Transitions
+- **Constant Equal-Power Law**: Sinusoidal ($\sin^2 + \cos^2 \equiv 1.0$) volume curves ensure consistent acoustic power throughout crossfades, eliminating midpoint volume dips.
+- **Smart Automix (DJ Mode)**: Automatically scales transition duration to 15% of track length and trims encoder pre-roll silence (~200ms) for punchy beat transitions.
+- **Bass-Swap Crossover**: Smoothly filters out outgoing low frequencies past the 55% mark to eliminate muddy low-end clashes between kicks and basslines.
+- **Customizable**: Off / Equal-Power Crossfade / Smart Automix selectable in Player Settings.
+
+### 🚗 Android Auto Live Lyrics Projection
+- **Real-Time Karaoke Projection**: Streams synchronized lyrics directly onto car head unit displays via the MediaSession subtitle field.
+- **Interlude Awareness**: Displays 🎤 [Lyrics] during singing and 🎵 [Intro] or 🎵 [Instrumental] during instrumental breaks.
+- **Car Screen Controls**: Dedicated on-screen toggle button to enable or disable lyric projection with a single tap.
+
+### ⚡ Engine & Architecture Scalability
+- **Non-Blocking Background Dispatchers**: Migrated heavy YouTube API calls, artist queries, and playlist repair transactions off the Main thread onto `Dispatchers.IO`.
+- **Atomic Database Transactions**: Batched Android Auto search queries into single SQLite transactions, preventing disk thrashing and UI freezes.
+- **Zero-Block Player Transitions**: Replaced synchronous `runBlocking` calls during playback crossfades with fast in-memory player state checks.
+- **AI Diagnostics & Flight Recorder**: 1-tap issue reporter and flight recorder log exporter to quickly capture and diagnose session errors.
+
+### 📦 Universal Release
+- **Single Universal APK**: Unified build pipeline delivering one single universal APK (`AuraMusic.apk`) for seamless installation and updates.
 
 ~ @iammrwrath
 
