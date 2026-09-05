@@ -142,6 +142,7 @@ import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DefaultOpenTabKey
 import com.metrolist.music.constants.DensityScaleKey
 import com.metrolist.music.constants.DisableScreenshotKey
+import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.EnableHighRefreshRateKey
 import com.metrolist.music.constants.EnableLandscapeScalingKey
@@ -165,6 +166,7 @@ import com.metrolist.music.constants.SimpMusicMigrationDoneKey
 import com.metrolist.music.constants.SlimNavBarHeight
 import com.metrolist.music.constants.SlimNavBarKey
 import com.metrolist.music.constants.StopMusicOnTaskClearKey
+import com.metrolist.music.constants.SwipeToSongKey
 import com.metrolist.music.constants.UpdateNotificationsEnabledKey
 import com.metrolist.music.constants.UseNewMiniPlayerDesignKey
 import com.metrolist.music.constants.VideoThumbnailMigrationDoneKey
@@ -552,12 +554,17 @@ class MainActivity : FragmentActivity() {
 
         LaunchedEffect(enableHighRefreshRate) {
             val window = this@MainActivity.window
+            val modes = window.windowManager.defaultDisplay.supportedModes
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val layoutParams = window.attributes
                 if (enableHighRefreshRate) {
-                    layoutParams.preferredDisplayModeId = 0
+                    val maxMode = modes.maxByOrNull { it.refreshRate }
+                    if (maxMode != null) {
+                        layoutParams.preferredDisplayModeId = maxMode.modeId
+                    }
+                    val maxRate = modes.maxOfOrNull { it.refreshRate } ?: 120f
+                    layoutParams.preferredRefreshRate = maxRate
                 } else {
-                    val modes = window.windowManager.defaultDisplay.supportedModes
                     val mode60 =
                         modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
                             ?: modes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
@@ -565,12 +572,14 @@ class MainActivity : FragmentActivity() {
                     if (mode60 != null) {
                         layoutParams.preferredDisplayModeId = mode60.modeId
                     }
+                    layoutParams.preferredRefreshRate = 60f
                 }
                 window.attributes = layoutParams
             } else {
                 val params = window.attributes
                 if (enableHighRefreshRate) {
-                    params.preferredRefreshRate = 0f
+                    val maxRate = modes.maxOfOrNull { it.refreshRate } ?: 120f
+                    params.preferredRefreshRate = maxRate
                 } else {
                     params.preferredRefreshRate = 60f
                 }
@@ -856,12 +865,6 @@ class MainActivity : FragmentActivity() {
                             .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top)
                             .add(WindowInsets(top = AppBarHeight, bottom = bottom))
                     }
-                appBarScrollBehavior(
-                    canScroll = {
-                        !inSearchScreen &&
-                            (playerBottomSheetState.isCollapsed || playerBottomSheetState.isDismissed)
-                    },
-                )
 
                 val topAppBarScrollBehavior =
                     appBarScrollBehavior(
@@ -1007,6 +1010,8 @@ class MainActivity : FragmentActivity() {
                 var showAccountDialog by remember { mutableStateOf(false) }
 
                 val pauseListenHistory by rememberPreference(PauseListenHistoryKey, defaultValue = false)
+                val swipeToSong by rememberPreference(SwipeToSongKey, defaultValue = false)
+                val cropAlbumArt by rememberPreference(CropAlbumArtKey, defaultValue = false)
                 val eventCount by database.eventCount().collectAsStateWithLifecycle(initialValue = 0)
                 val showHistoryButton =
                     remember(pauseListenHistory, eventCount) {
@@ -1028,6 +1033,8 @@ class MainActivity : FragmentActivity() {
                     LocalListenTogetherManager provides listenTogetherManager,
                     LocalChangelogState provides showChangelog,
                     LocalArtistNameAliases provides artistNameAliases,
+                    LocalSwipeToSong provides swipeToSong,
+                    LocalCropAlbumArt provides cropAlbumArt,
                 ) {
                     if (showChangelog.value) {
                         ChangelogScreen(onDismiss = { showChangelog.value = false })
@@ -1654,3 +1661,5 @@ val LocalListenTogetherManager = staticCompositionLocalOf<com.metrolist.music.li
 val LocalChangelogState = staticCompositionLocalOf<MutableState<Boolean>> { error("No LocalChangelogState provided") }
 val LocalArtistNameAliases = staticCompositionLocalOf<Map<String, String>> { emptyMap() }
 val LocalIsPlayerExpanded = compositionLocalOf { false }
+val LocalSwipeToSong = compositionLocalOf { false }
+val LocalCropAlbumArt = compositionLocalOf { false }
