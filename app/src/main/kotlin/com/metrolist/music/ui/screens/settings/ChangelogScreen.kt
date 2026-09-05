@@ -36,7 +36,7 @@ import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.ReleaseAsset
 import com.metrolist.music.utils.Updater
 
-private val markdownLinkRegex = Regex("(@[a-zA-Z0-9_-]+)|(https?://[\\w-]+(\\.[\\w-]+)+[\\w.,@?^=%&:/~+#-]*[\\w@?^=%&/~+#-])")
+private val markdownInlineRegex = Regex("(\\*\\*(.+?)\\*\\*)|(@[a-zA-Z0-9_-]+)|(https?://[\\w-]+(\\.[\\w-]+)+[\\w.,@?^=%&:/~+#-]*)")
 
 /** Built-in static changelog shown when GitHub releases haven't been published yet. */
 private val AURAMUSIC_STATIC_CHANGELOG = listOf(
@@ -45,7 +45,7 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
         releaseDate = "2026-09-05",
         description = """
-## 🎧 AuraMusic v13.7.0 — Performance & Stability (Minor Release)
+## 🎧 AuraMusic v13.7.0 - Performance & Stability (Minor Release)
 
 ### ⚡ Performance & Stutter Elimination
 - **True R8 Release Pipeline**: Transitioned build to `:app:assembleFossRelease` with full R8 code shrinking, dead code removal, and AOT compilation, cutting APK size by 49% (from 50.2 MB to 25.5 MB) and removing all Compose debug tracing overhead.
@@ -261,62 +261,132 @@ fun MarkdownText(text: String) {
         lines.filter { it.isNotBlank() }.forEach { line ->
             val trimmedLine = line.trim()
 
-            if (trimmedLine.startsWith("#")) {
+            if (trimmedLine == "---" || trimmedLine == "***" || trimmedLine == "___") {
+                HorizontalDivider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            } else if (trimmedLine.startsWith("#")) {
                 val level = trimmedLine.takeWhile { it == '#' }.length
-                val headerText = trimmedLine.substring(level).trim()
-                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                var headerText = trimmedLine.substring(level).trim()
+                while (headerText.startsWith("??") || headerText.startsWith("?") || headerText.startsWith("\ufffd")) {
+                    headerText = headerText.dropWhile { it == '?' || it == '\ufffd' }.trim()
+                }
+                val isMainTitle = level <= 1
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = if (isMainTitle) 4.dp else 12.dp, bottom = 4.dp),
+                    contentAlignment = if (isMainTitle) Alignment.Center else Alignment.CenterStart
+                ) {
                     Text(
                         text = headerText,
                         style = when (level) {
-                            1 -> MaterialTheme.typography.headlineMedium
-                            2 -> MaterialTheme.typography.headlineSmall
+                            1 -> MaterialTheme.typography.headlineSmall
+                            2 -> MaterialTheme.typography.titleLarge
                             else -> MaterialTheme.typography.titleMedium
                         },
                         fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = if (isMainTitle) TextAlign.Center else TextAlign.Start
                     )
                 }
             } else {
                 val isListItem = trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")
-                val contentText = if (isListItem) {
+                var contentText = if (isListItem) {
                     trimmedLine.substring(2).trim()
                 } else {
                     trimmedLine
                 }
+                while (contentText.startsWith("??") || contentText.startsWith("?") || contentText.startsWith("\ufffd")) {
+                    contentText = contentText.dropWhile { it == '?' || it == '\ufffd' }.trim()
+                }
 
                 val annotatedString = buildAnnotatedString {
                     var lastIndex = 0
-                    markdownLinkRegex.findAll(contentText).forEach { result ->
+                    markdownInlineRegex.findAll(contentText).forEach { result ->
                         append(contentText.substring(lastIndex, result.range.first))
-                        
-                        val match = result.value
-                        val link = if (match.startsWith("@")) "https://github.com/${match.substring(1)}" else match
-                        
-                        pushStringAnnotation(tag = "URL", annotation = link)
-                        withStyle(style = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary, 
-                            fontWeight = if (match.startsWith("@")) FontWeight.Bold else FontWeight.Normal,
-                            textDecoration = if (match.startsWith("@")) TextDecoration.None else TextDecoration.Underline
-                        )) {
-                            append(match)
+
+                        val boldText = result.groups[2]?.value
+                        val mention = result.groups[3]?.value
+                        val url = result.groups[4]?.value
+
+                        when {
+                            boldText != null -> {
+                                if (boldText.startsWith("@")) {
+                                    val user = boldText.substring(1)
+                                    val link = "https://github.com/$user"
+                                    pushStringAnnotation(tag = "URL", annotation = link)
+                                    withStyle(
+                                        SpanStyle(
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    ) {
+                                        append(boldText)
+                                    }
+                                    pop()
+                                } else {
+                                    withStyle(
+                                        SpanStyle(
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    ) {
+                                        append(boldText)
+                                    }
+                                }
+                            }
+                            mention != null -> {
+                                val user = mention.substring(1)
+                                val link = "https://github.com/$user"
+                                pushStringAnnotation(tag = "URL", annotation = link)
+                                withStyle(
+                                    SpanStyle(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                ) {
+                                    append(mention)
+                                }
+                                pop()
+                            }
+                            url != null -> {
+                                pushStringAnnotation(tag = "URL", annotation = url)
+                                withStyle(
+                                    SpanStyle(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textDecoration = TextDecoration.Underline
+                                    )
+                                ) {
+                                    append(url)
+                                }
+                                pop()
+                            }
                         }
-                        pop()
                         lastIndex = result.range.last + 1
                     }
                     append(contentText.substring(lastIndex))
                 }
 
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
                         if (isListItem) {
                             Text(
-                                text = stringResource(R.string.list_bullet),
+                                text = "•",
                                 modifier = Modifier.padding(end = 8.dp),
-                                style = MaterialTheme.typography.bodyLarge
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                         ClickableText(
                             text = annotatedString,
+                            modifier = if (isListItem) Modifier.weight(1f) else Modifier.fillMaxWidth(),
                             style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                             onClick = { offset ->
                                 annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
@@ -326,13 +396,9 @@ fun MarkdownText(text: String) {
                             }
                         )
                     }
-                    
+
                     if (isListItem) {
                         Spacer(modifier = Modifier.height(4.dp))
-                        HorizontalDivider(
-                            thickness = 0.5.dp,
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                        )
                     }
                 }
             }
