@@ -89,6 +89,7 @@ import androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING
 import androidx.media3.exoplayer.offline.Download.STATE_QUEUED
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.metrolist.innertube.YouTube
 import com.metrolist.innertube.models.AlbumItem
 import com.metrolist.innertube.models.ArtistItem
@@ -1534,6 +1535,7 @@ fun ItemThumbnail(
                 }
                 ImageRequest.Builder(context)
                     .data(resolvedUrl)
+                    .crossfade(false)
                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1618,6 +1620,7 @@ fun LocalThumbnail(
         val imageRequest = remember(thumbnailUrl) {
             ImageRequest.Builder(context)
                 .data(thumbnailUrl)
+                .crossfade(false)
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1731,6 +1734,7 @@ fun PlaylistThumbnail(
         1 -> AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(thumbnails[0].resize((size.value * 3).toInt()))
+                .crossfade(false)
                 .apply { /* Removed cache key extensions due to unresolved in env */ }
                 .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                 .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
@@ -1758,6 +1762,7 @@ fun PlaylistThumbnail(
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(thumbnails.getOrNull(index)?.resize((size.value * 1.5).toInt()))
+                        .crossfade(false)
                         .apply { /* Removed cache key extensions due to unresolved in env */ }
                         .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                         .diskCachePolicy(coil3.request.CachePolicy.ENABLED)

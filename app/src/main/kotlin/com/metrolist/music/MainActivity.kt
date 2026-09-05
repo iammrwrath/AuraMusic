@@ -554,20 +554,31 @@ class MainActivity : FragmentActivity() {
 
         LaunchedEffect(enableHighRefreshRate) {
             val window = this@MainActivity.window
-            val modes = window.windowManager.defaultDisplay.supportedModes
+            val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                this@MainActivity.display ?: window.windowManager.defaultDisplay
+            } else {
+                @Suppress("DEPRECATION")
+                window.windowManager.defaultDisplay
+            }
+            val modes = display.supportedModes
+            val currentMode = display.mode
+            val matchingModes = modes.filter {
+                it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight
+            }.ifEmpty { modes.toList() }
+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val layoutParams = window.attributes
                 if (enableHighRefreshRate) {
-                    val maxMode = modes.maxByOrNull { it.refreshRate }
+                    val maxMode = matchingModes.maxByOrNull { it.refreshRate }
                     if (maxMode != null) {
                         layoutParams.preferredDisplayModeId = maxMode.modeId
                     }
-                    val maxRate = modes.maxOfOrNull { it.refreshRate } ?: 120f
+                    val maxRate = matchingModes.maxOfOrNull { it.refreshRate } ?: 120f
                     layoutParams.preferredRefreshRate = maxRate
                 } else {
                     val mode60 =
-                        modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
-                            ?: modes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
+                        matchingModes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
+                            ?: matchingModes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
 
                     if (mode60 != null) {
                         layoutParams.preferredDisplayModeId = mode60.modeId
@@ -578,7 +589,7 @@ class MainActivity : FragmentActivity() {
             } else {
                 val params = window.attributes
                 if (enableHighRefreshRate) {
-                    val maxRate = modes.maxOfOrNull { it.refreshRate } ?: 120f
+                    val maxRate = matchingModes.maxOfOrNull { it.refreshRate } ?: 120f
                     params.preferredRefreshRate = maxRate
                 } else {
                     params.preferredRefreshRate = 60f
@@ -700,7 +711,7 @@ class MainActivity : FragmentActivity() {
             }
 
             CompositionLocalProvider(LocalDensity provides scaledDensity) {
-            BoxWithConstraints(
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -840,7 +851,7 @@ class MainActivity : FragmentActivity() {
                                 (if (!showRail && shouldShowNavigationBar) navPadding else 0.dp) +
                                 (if (useNewMiniPlayerDesign) MiniPlayerBottomSpacing else 0.dp) +
                                 MiniPlayerHeight,
-                        expandedBound = maxHeight,
+                        expandedBound = containerSize.height,
                     )
 
                 val playerReadyState =
@@ -1337,43 +1348,63 @@ class MainActivity : FragmentActivity() {
                                             NavigationTab.LIBRARY -> Screens.Library
                                         }.route,
                                     enterTransition = {
-                                        val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-                                        val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-
-                                        if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
+                                        val isTargetTopLevel = navigationItems.fastAny { it.route == targetState.destination.route }
+                                        val isInitialTopLevel = navigationItems.fastAny { it.route == initialState.destination.route }
+                                        if (isTargetTopLevel && isInitialTopLevel) {
+                                            fadeIn(tween(150))
                                         } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                            val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
+                                            val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
+                                            if (currentRouteIndex == -1 || currentRouteIndex > previousRouteIndex) {
+                                                slideInHorizontally(tween(200)) { it / 10 } + fadeIn(tween(150))
+                                            } else {
+                                                slideInHorizontally(tween(200)) { -it / 10 } + fadeIn(tween(150))
+                                            }
                                         }
                                     },
                                     exitTransition = {
-                                        val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-                                        val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-
-                                        if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
+                                        val isTargetTopLevel = navigationItems.fastAny { it.route == targetState.destination.route }
+                                        val isInitialTopLevel = navigationItems.fastAny { it.route == initialState.destination.route }
+                                        if (isTargetTopLevel && isInitialTopLevel) {
+                                            fadeOut(tween(100))
                                         } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
+                                            val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
+                                            val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
+                                            if (targetRouteIndex == -1 || targetRouteIndex > currentRouteIndex) {
+                                                slideOutHorizontally(tween(200)) { -it / 10 } + fadeOut(tween(100))
+                                            } else {
+                                                slideOutHorizontally(tween(200)) { it / 10 } + fadeOut(tween(100))
+                                            }
                                         }
                                     },
                                     popEnterTransition = {
-                                        val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-                                        val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-
-                                        if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
-                                            slideInHorizontally { it / 8 } + fadeIn(tween(200))
+                                        val isTargetTopLevel = navigationItems.fastAny { it.route == targetState.destination.route }
+                                        val isInitialTopLevel = navigationItems.fastAny { it.route == initialState.destination.route }
+                                        if (isTargetTopLevel && isInitialTopLevel) {
+                                            fadeIn(tween(150))
                                         } else {
-                                            slideInHorizontally { -it / 8 } + fadeIn(tween(200))
+                                            val currentRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
+                                            val previousRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
+                                            if (previousRouteIndex != -1 && previousRouteIndex < currentRouteIndex) {
+                                                slideInHorizontally(tween(200)) { it / 10 } + fadeIn(tween(150))
+                                            } else {
+                                                slideInHorizontally(tween(200)) { -it / 10 } + fadeIn(tween(150))
+                                            }
                                         }
                                     },
                                     popExitTransition = {
-                                        val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
-                                        val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
-
-                                        if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
-                                            slideOutHorizontally { -it / 8 } + fadeOut(tween(200))
+                                        val isTargetTopLevel = navigationItems.fastAny { it.route == targetState.destination.route }
+                                        val isInitialTopLevel = navigationItems.fastAny { it.route == initialState.destination.route }
+                                        if (isTargetTopLevel && isInitialTopLevel) {
+                                            fadeOut(tween(100))
                                         } else {
-                                            slideOutHorizontally { it / 8 } + fadeOut(tween(200))
+                                            val currentRouteIndex = routeIndexMap[initialState.destination.route] ?: -1
+                                            val targetRouteIndex = routeIndexMap[targetState.destination.route] ?: -1
+                                            if (currentRouteIndex != -1 && currentRouteIndex < targetRouteIndex) {
+                                                slideOutHorizontally(tween(200)) { -it / 10 } + fadeOut(tween(100))
+                                            } else {
+                                                slideOutHorizontally(tween(200)) { it / 10 } + fadeOut(tween(100))
+                                            }
                                         }
                                     },
                                 ) {
