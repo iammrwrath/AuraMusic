@@ -45,6 +45,15 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
         releaseDate = "2026-09-05",
         description = """
+## 🎧 AuraMusic v13.7.1 - Stability & CI/CD Hotfix (Patch Release)
+
+### 🐛 Bug Fixes & Stability
+- **Coroutine Scope Lifecycle Fix**: Resolved `ForgottenCoroutineScopeException` occurring during lyrics fetching when navigating away from the player by eliminating misplaced `coroutineScope.launch` inside `LaunchedEffect` and utilizing structured `withContext(Dispatchers.IO)`.
+- **Cancellation Propagation**: Ensured `CancellationException` is properly rethrown across `BetterLyrics` and `LyricsHelper` to prevent normal coroutine cancellations from being logged as errors.
+- **GitHub Actions Self-Healing CI Fix**: Fixed `fatal: not a git repository` in `ai-issue-solver.yml` by ordering `actions/checkout` before issue acknowledgment and adding explicit repository targeting to all `gh` CLI commands.
+
+---
+
 ## 🎧 AuraMusic v13.7.0 - Performance & Stability (Minor Release)
 
 ### ⚡ Performance & Stutter Elimination

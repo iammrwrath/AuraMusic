@@ -11,6 +11,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpStatusCode
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 
@@ -70,6 +71,7 @@ object BetterLyrics {
             null
         }
     }.getOrElse { e ->
+        if (e is CancellationException) throw e
         Timber.tag(TAG).e(e, "Exception during fetchTTML")
         null
     }

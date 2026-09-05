@@ -29,10 +29,10 @@ def search_candidate_files(issue_text: str):
             referenced_files.add(str(path))
     return list(referenced_files)
 
-def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.8-flash") -> str:
+def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-2.5-flash") -> str:
     """Calls Gemini Flash model via REST API with fallback support."""
     models_to_try = [primary_model]
-    for fallback in ["gemini-3.8-flash", "gemini-3-flash-preview", "gemini-2.5-flash"]:
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -78,15 +78,22 @@ def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.8-
     raise RuntimeError("All Gemini model attempts failed.")
 
 def main():
-    api_key = get_env_var("GEMINI_API_KEY")
-    if not api_key:
-        print("ERROR: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-        
-    model_name = get_env_var("GEMINI_MODEL", "gemini-3.8-flash")
     issue_title = get_env_var("ISSUE_TITLE", "Diagnostic Report")
     issue_body = get_env_var("ISSUE_BODY", "")
     issue_number = get_env_var("ISSUE_NUMBER", "0")
+    model_name = get_env_var("GEMINI_MODEL", "gemini-2.5-flash")
+
+    api_key = get_env_var("GEMINI_API_KEY")
+    if not api_key:
+        print("WARNING: GEMINI_API_KEY environment variable is not set.", file=sys.stderr)
+        with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
+            f.write(
+                f"### 🤖 AI Self-Healing Issue Solver\n\n"
+                f"Issue #{issue_number} was acknowledged and logged by the automated pipeline.\n\n"
+                f"> ℹ️ **Notice**: `GEMINI_API_KEY` is not currently configured in repository secrets.\n"
+                f"> To enable automated real-time diagnosis and automated code PR generation, add your Gemini API key in **Settings ➔ Secrets and variables ➔ Actions ➔ New repository secret** as `GEMINI_API_KEY`.\n"
+            )
+        sys.exit(0)
 
     print(f"[*] Processing Issue #{issue_number}: {issue_title}")
     print(f"[*] Configured Gemini Model: {model_name}")

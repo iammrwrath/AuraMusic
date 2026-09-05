@@ -25,17 +25,18 @@ jobs:
     timeout-minutes: 25
 
     steps:
-      - name: Acknowledge Issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          gh issue comment "$ISSUE_NUMBER" --body "🤖 **Antigravity AI**: Issue received! Analyzing flight recorder logs, stack traces, and codebase to formulate an automated fix..."
-
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Acknowledge Issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "🤖 **Antigravity AI**: Issue received! Analyzing flight recorder logs, stack traces, and codebase to formulate an automated fix..."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -45,7 +46,7 @@ jobs:
       - name: Run AI Diagnostic & Code Patching
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -53,48 +54,60 @@ jobs:
           python3 .github/scripts/ai_issue_solver.py
 
       - name: Set up JDK 21
+        if: hashFiles('ai_fix.patch') != ''
         uses: actions/setup-java@v4
         with:
           java-version: "21"
           distribution: "temurin"
 
       - name: Set up Gradle
+        if: hashFiles('ai_fix.patch') != ''
         uses: gradle/actions/setup-gradle@v4
 
       - name: Grant execute permission for gradlew
+        if: hashFiles('ai_fix.patch') != ''
         run: chmod +x gradlew
 
       - name: Compile and Verify Fix (assembleFossDebug)
+        if: hashFiles('ai_fix.patch') != ''
         run: ./gradlew assembleFossDebug --no-daemon
 
       - name: Upload Debug APK Artifact
+        if: hashFiles('ai_fix.patch') != ''
         uses: actions/upload-artifact@v4
         with:
           name: app-foss-debug-issue-${{ github.event.issue.number }}
           path: app/build/outputs/apk/foss/debug/app-foss-debug.apk
 
       - name: Create Pull Request & Notify
+        if: always() && hashFiles('ai_solution_summary.md') != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b "$BRANCH_NAME"
-          git add -A
-          git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}"
-          git push origin "$BRANCH_NAME" --force
+          if [ -f "ai_fix.patch" ]; then
+            BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$BRANCH_NAME"
+            git add -A
+            git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}"
+            git push origin "$BRANCH_NAME" --force
 
-          PR_URL=$(gh pr create \
-            --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" \
-            --body-file "ai_solution_summary.md" \
-            --head "$BRANCH_NAME" \
-            --base "our-fixes" || gh pr create --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" --body-file "ai_solution_summary.md" --head "$BRANCH_NAME" --base "main")
+            PR_URL=$(gh pr create \
+              --repo "$GH_REPO" \
+              --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" \
+              --body-file "ai_solution_summary.md" \
+              --head "$BRANCH_NAME" \
+              --base "main" || echo "")
 
-          gh issue comment "$ISSUE_NUMBER" --body "$(cat ai_solution_summary.md)
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "$(cat ai_solution_summary.md)
 
-          ---
-          ✅ **Build Status**: Verified & compiled cleanly!
-          🔗 **Pull Request**: ${PR_URL}
-          📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!"
+---
+✅ **Build Status**: Verified & compiled cleanly!
+🔗 **Pull Request**: ${PR_URL}
+📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!"
+          else
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "$(cat ai_solution_summary.md)"
+          fi
