@@ -47,14 +47,48 @@ internal fun List<Track>.bestMatchingForRelaxed(duration: Int): Track? {
 internal fun List<Track>.bestMatchingFor(
     duration: Int,
     trackName: String? = null,
-    artistName: String? = null
+    artistName: String? = null,
 ): Track? {
     if (isEmpty()) return null
 
-    if (duration == -1) {
-        if (trackName != null && artistName != null) {
-            return findBestMatch(trackName, artistName)
+    if (trackName != null && artistName != null) {
+        val normalizedTrackName = trackName.trim().lowercase()
+        val normalizedArtistName = artistName.trim().lowercase()
+
+        val scored = map { track ->
+            val trackNameSimilarity = calculateSimilarity(
+                normalizedTrackName,
+                track.trackName.trim().lowercase(),
+            )
+            val artistNameSimilarity = calculateSimilarity(
+                normalizedArtistName,
+                track.artistName.trim().lowercase(),
+            )
+            val durationScore = if (duration > 0 && track.duration > 0) {
+                val diff = abs(track.duration.toInt() - duration)
+                when {
+                    diff <= 2 -> 1.0
+                    diff <= 5 -> 0.8
+                    diff <= 10 -> 0.5
+                    diff <= 20 -> 0.2
+                    else -> 0.0
+                }
+            } else {
+                0.5
+            }
+            val syncedBonus = if (track.syncedLyrics != null) 0.15 else 0.0
+            val totalScore = (trackNameSimilarity * 0.4) + (artistNameSimilarity * 0.4) + (durationScore * 0.2) + syncedBonus
+            val isValid = trackNameSimilarity >= 0.5 && artistNameSimilarity >= 0.4
+            Triple(track, totalScore, isValid)
         }
+
+        val validMatches = scored.filter { it.third }
+        if (validMatches.isNotEmpty()) {
+            return validMatches.maxByOrNull { it.second }?.first
+        }
+    }
+
+    if (duration == -1) {
         return firstOrNull { it.syncedLyrics != null } ?: firstOrNull()
     }
 

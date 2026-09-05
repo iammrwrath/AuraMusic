@@ -145,19 +145,9 @@ object LrcLib {
         val cleanedTitle = cleanTitle(title)
         val cleanedArtist = cleanArtist(artist)
 
-        val res = when {
-            duration == -1 -> {
-                tracks.bestMatchingFor(duration, cleanedTitle, cleanedArtist)?.let { track ->
-                    track.syncedLyrics ?: track.plainLyrics
-                }?.let(LrcLib::Lyrics)
-            }
-            else -> {
-                // Try with relaxed duration matching (±5 seconds instead of ±2)
-                tracks.bestMatchingForRelaxed(duration)?.let { track ->
-                    track.syncedLyrics ?: track.plainLyrics
-                }?.let(LrcLib::Lyrics)
-            }
-        }
+        val res = tracks.bestMatchingFor(duration, cleanedTitle, cleanedArtist)?.let { track ->
+            track.syncedLyrics ?: track.plainLyrics
+        }?.let(LrcLib::Lyrics)
 
         if (res != null) {
             return@runCatching res.text

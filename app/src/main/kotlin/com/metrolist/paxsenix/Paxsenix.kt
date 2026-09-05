@@ -231,12 +231,15 @@ object Paxsenix {
             val quality = getQuality(lrc)
             Timber.d("Got lyrics, quality=$quality")
             
-            if (quality > bestQuality) {
+            if (quality >= 2) {
+                // Highly ranked match with synced lyrics found. Accept it immediately to avoid lower-ranked mismatch.
+                bestLyrics = lrc
+                bestQuality = quality
+                break
+            } else if (quality > bestQuality) {
                 bestQuality = quality
                 bestLyrics = lrc
             }
-            
-            if (bestQuality == 3) break // Word-synced is best we can get
         }
 
         bestLyrics?.let {
