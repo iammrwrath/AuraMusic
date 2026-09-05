@@ -1,3 +1,18 @@
+---v13.7.0
+
+# AuraMusic v13.7.0 — Performance & Stability (Minor Release)
+
+This release delivers major responsiveness, rendering, and architecture optimizations across Android devices, with special focus on Google Pixel performance.
+
+### ⚡ Performance & Stutter Elimination
+- **True R8 Release Pipeline**: Transitioned build to `:app:assembleFossRelease` with full R8 code shrinking, dead code removal, and AOT compilation, cutting APK size by 49% (from 50.2 MB to 25.5 MB) and removing all Compose debug tracing overhead.
+- **Root Subcomposition Elimination**: Removed `BoxWithConstraints` at the root of `MainActivity`, eliminating deferred two-pass measurement and layout across the entire UI tree on every frame.
+- **Pixel Physical Resolution Matching**: Enhanced display refresh rate mode selection to match the active physical display resolution (1080p vs 1440p) before locking to 120Hz/90Hz, preventing compositor hitches.
+- **Smooth Navigation Transitions**: Optimized bottom navigation tab switches with lightweight fades (`fadeIn`/`fadeOut`) to eliminate heavy concurrent two-screen horizontal translations during tab switches.
+- **Instant Thumbnail Rendering**: Disabled redundant Coil crossfade animations on list and grid thumbnails (`crossfade(false)`) so cached artwork renders immediately without alpha-blending overhead during flings.
+
+~ @iammrwrath
+
 ---v13.6.3
 
 # AuraMusic v13.6.3 — Performance & Identity Update
