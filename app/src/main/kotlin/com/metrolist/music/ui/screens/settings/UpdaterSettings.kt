@@ -35,6 +35,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import com.metrolist.music.utils.ReleaseInfo
 import androidx.navigation.NavController
 import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
@@ -60,15 +73,32 @@ fun UpdaterScreen(
     val (updateNotifications, onUpdateNotificationsChange) = rememberPreference(UpdateNotificationsEnabledKey, true)
 
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     var isChecking by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf(false) }
+    var latestRelease by remember { mutableStateOf<ReleaseInfo?>(null) }
     var latestVersion by remember { mutableStateOf<String?>(null) }
+    var downloadUrl by remember { mutableStateOf<String?>(null) }
+    var hasChecked by remember { mutableStateOf(false) }
     var showChangelog by remember { mutableStateOf(false) }
     var changelogContent by remember { mutableStateOf<String?>(null) }
     var checkError by remember { mutableStateOf<String?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
 
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val cached = Updater.getCachedLatestRelease()
+        if (cached != null) {
+            val hasUpdate = Updater.isUpdateAvailable(BuildConfig.BASE_VERSION_NAME, cached.tagName)
+            latestRelease = cached
+            latestVersion = cached.cleanVersionName
+            updateAvailable = hasUpdate
+            changelogContent = cached.description
+            downloadUrl = Updater.getDownloadUrlForCurrentVariant(cached)
+            hasChecked = true
+        }
+    }
 
     fun performManualCheck() {
         coroutineScope.launch {
@@ -79,12 +109,16 @@ fun UpdaterScreen(
                     .checkForUpdate(forceRefresh = true)
                     .onSuccess { (releaseInfo, hasUpdate) ->
                         if (releaseInfo != null) {
-                            latestVersion = releaseInfo.versionName
+                            latestRelease = releaseInfo
+                            latestVersion = releaseInfo.cleanVersionName
                             updateAvailable = hasUpdate
                             changelogContent = releaseInfo.description
+                            downloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
                         }
+                        hasChecked = true
                     }.onFailure {
                         checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
+                        hasChecked = true
                     }
             }
             isChecking = false
@@ -214,28 +248,126 @@ fun UpdaterScreen(
             )
         }
 
-        if (updateAvailable && latestVersion != null) {
+        if (updateAvailable && latestRelease != null) {
             Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = { showChangelog = !showChangelog },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
             ) {
-                Text(if (showChangelog) stringResource(R.string.hide_changelog) else stringResource(R.string.view_changelog))
-            }
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.update),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(28.dp),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.new_version_available),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                            Text(
+                                text = latestRelease?.versionName ?: "v$latestVersion",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                            )
+                        }
+                    }
 
-            if (showChangelog && changelogContent != null) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = changelogContent!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                )
+                    Spacer(Modifier.height(16.dp))
+
+                    val finalDownloadUrl = downloadUrl ?: Updater.getDownloadUrlForCurrentVariant(latestRelease!!)
+                    if (finalDownloadUrl != null) {
+                        Button(
+                            onClick = { uriHandler.openUri(finalDownloadUrl) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.download),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(text = "Download Update")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    OutlinedButton(
+                        onClick = { showChangelog = !showChangelog },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            if (showChangelog) stringResource(R.string.hide_changelog)
+                            else stringResource(R.string.view_changelog)
+                        )
+                    }
+
+                    if (showChangelog && changelogContent != null) {
+                        Spacer(Modifier.height(12.dp))
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(
+                                text = changelogContent!!,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(12.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        } else if (hasChecked && !isChecking && !updateAvailable) {
+            Spacer(Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                ),
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "You're on the latest version",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "AuraMusic v${BuildConfig.VERSION_NAME} is up to date",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
 

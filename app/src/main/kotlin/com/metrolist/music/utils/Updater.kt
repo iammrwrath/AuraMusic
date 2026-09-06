@@ -20,7 +20,10 @@ data class ReleaseInfo(
     val description: String,
     val releaseDate: String,
     val assets: List<ReleaseAsset>
-)
+) {
+    val cleanVersionName: String
+        get() = tagName.removePrefix("v")
+}
 
 data class ReleaseAsset(
     val name: String,
@@ -43,12 +46,24 @@ object Updater {
     const val APK_NAME = "AuraMusic.apk"
 
     /**
+     * Extracts numeric version components, handling prefixes like 'v' or suffixes/words.
+     * E.g. "v13.7.1" -> [13, 7, 1], "AuraMusic v13.7.2 (Patch Release)" -> [13, 7, 2]
+     */
+     private fun extractVersionParts(version: String): List<Int> {
+        val match = Regex("""(\d+(?:\.\d+)*)""").find(version)
+        val cleanStr = match?.value ?: version.removePrefix("v").trim()
+        return cleanStr.split(".").mapNotNull { segment ->
+            segment.takeWhile { it.isDigit() }.toIntOrNull()
+        }
+    }
+
+    /**
      * Compares two version strings.
      * Returns: 1 if v1 > v2, -1 if v1 < v2, 0 if equal
      */
     fun compareVersions(v1: String, v2: String): Int {
-        val v1Parts = v1.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
-        val v2Parts = v2.removePrefix("v").split(".").map { it.toIntOrNull() ?: 0 }
+        val v1Parts = extractVersionParts(v1)
+        val v2Parts = extractVersionParts(v2)
         val maxLength = maxOf(v1Parts.size, v2Parts.size)
         
         for (i in 0 until maxLength) {
@@ -226,7 +241,7 @@ object Updater {
                 if (!shouldFetch && cachedReleaseInfo != null) {
                     val hasUpdate = isUpdateAvailable(
                         BuildConfig.BASE_VERSION_NAME,
-                        cachedReleaseInfo!!.versionName
+                        cachedReleaseInfo!!.tagName
                     )
                     return@runCatching cachedReleaseInfo!! to hasUpdate
                 }
@@ -236,7 +251,7 @@ object Updater {
                     val releaseInfo = result.getOrThrow()
                     val hasUpdate = isUpdateAvailable(
                         BuildConfig.BASE_VERSION_NAME,
-                        releaseInfo.versionName
+                        releaseInfo.tagName
                     )
                     releaseInfo to hasUpdate
                 } else {

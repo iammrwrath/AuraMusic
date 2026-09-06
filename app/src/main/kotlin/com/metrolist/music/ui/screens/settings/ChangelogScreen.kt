@@ -45,6 +45,16 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
         releaseDate = "2026-09-05",
         description = """
+## 🎧 AuraMusic v13.7.2 - Update Scoping & Version Logic (Patch Release)
+
+### 🔔 Update Scoping & Logic Improvements
+- **Strict Version Comparison**: Fixed `Updater.checkForUpdate()` to evaluate against GitHub release semantic tags (`tagName`) rather than release display titles, preventing false "New version available" announcements when already on the latest release.
+- **Robust Semantic Parsing**: Added regex-based semantic version tokenization in `compareVersions` to reliably compare version strings across tags and builds.
+- **Consolidated Updater Section**: Removed scattered update announcements, badges, and cards from the Account profile avatar, Account dialog, and root Settings screen. All update notifications and download actions are now exclusively hosted in `Settings > Updater`.
+- **Dedicated Updater Hub**: Added an interactive "New version available" card with a direct **Download Update** button and expandable release notes when an update is released, and a clear "Up to date" confirmation card when on the latest build.
+
+---
+
 ## 🎧 AuraMusic v13.7.1 - Stability & CI/CD Hotfix (Patch Release)
 
 ### 🐛 Bug Fixes & Stability
