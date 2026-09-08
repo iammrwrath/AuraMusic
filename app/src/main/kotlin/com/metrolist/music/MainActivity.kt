@@ -395,12 +395,20 @@ class MainActivity : FragmentActivity() {
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Request highest available display refresh rate (e.g. 90Hz / 120Hz) for butter-smooth scrolling
+        // Request highest available display refresh rate (e.g. 90Hz / 120Hz) matching current resolution
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            display?.supportedModes?.maxByOrNull { it.refreshRate }?.let { maxMode ->
-                val params = window.attributes
-                params.preferredDisplayModeId = maxMode.modeId
-                window.attributes = params
+            display?.let { disp ->
+                val currentMode = disp.mode
+                val modes = disp.supportedModes
+                val matching = modes.filter {
+                    it.physicalWidth == currentMode.physicalWidth && it.physicalHeight == currentMode.physicalHeight
+                }.ifEmpty { modes.toList() }
+                matching.maxByOrNull { it.refreshRate }?.let { maxMode ->
+                    val params = window.attributes
+                    params.preferredDisplayModeId = maxMode.modeId
+                    params.preferredRefreshRate = maxMode.refreshRate
+                    window.attributes = params
+                }
             }
         }
 

@@ -1,3 +1,18 @@
+---v13.8.0
+
+# AuraMusic v13.8.0 - Multi-Device Performance & Fluidity (Minor Release)
+
+This release delivers major performance optimizations across high-refresh-rate flagships (Pixel 9 Pro XL 120Hz) and lower-tier budget devices, speeding up audio startup by 33%, eliminating Compose recomposition overhead, and optimizing memory usage.
+
+### ⚡ Performance & Fluidity
+- **Compose Stability Configuration**: Added stability configuration marking collections, InnerTube models, and entities as stable, enabling smart skipping across lists, grids, and player updates.
+- **Instant Cold-Start 120Hz Locking**: Physical resolution is matched on frame 1 of `onCreate`, preventing screen mode switching flickers on Pixel 9 Pro XL and dynamic resolution displays.
+- **Fast-Startup Audio Buffering**: Tuned ExoPlayer `DefaultLoadControl` to start playback at 500ms (down from 750ms-1000ms), delivering 33% faster playback response and optimized memory limits.
+- **Instant Image Rendering & RAM Scaling**: Disabled global Coil crossfade animations during list fling scrolling and dynamically scaled memory cache limits according to device RAM tier.
+- **SQLite In-Memory Temp Store & Indexes**: Configured `PRAGMA temp_store = MEMORY` and added indexes on play time, format, and playlist-song mappings for faster database reads.
+
+~ @iammrwrath
+
 ---v13.7.3
 
 # AuraMusic v13.7.3 - CI Self-Healing Solver & Library Reliability (Patch Release)

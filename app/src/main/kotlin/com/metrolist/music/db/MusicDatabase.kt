@@ -245,13 +245,17 @@ private fun applyPragmaSettings(db: SupportSQLiteDatabase) {
         db.query("PRAGMA cache_size = -16000").close()
         db.query("PRAGMA wal_autocheckpoint = 1000").close()
         db.query("PRAGMA synchronous = NORMAL").close()
+        db.query("PRAGMA temp_store = MEMORY").close()
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_inLibrary ON song (inLibrary)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_liked ON song (liked)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_likedDate ON song (likedDate)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_isDownloaded ON song (isDownloaded)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_isLocal ON song (isLocal)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_title ON song (title)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_totalPlayTime ON song (totalPlayTime)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_playlist_song_map_playlistId ON playlist_song_map (playlistId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_playlist_song_map_songId ON playlist_song_map (songId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_format_songId ON format (songId)")
     } catch (e: Exception) {
         Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
     }

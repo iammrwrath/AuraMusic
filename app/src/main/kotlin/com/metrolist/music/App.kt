@@ -299,16 +299,21 @@ class App :
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val cacheSize = cachedCoilCacheSize ?: 512
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val isLowRam = activityManager?.isLowRamDevice == true
+        val memoryPercent = if (isLowRam) 0.15 else 0.25
+
         return ImageLoader
             .Builder(this)
             .apply {
-                crossfade(true)
+                // Instant bitmap presentation without crossfade animation overhead during 120Hz flings
+                crossfade(false)
                 allowHardware(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
                 // Memory cache for fast image loading (prevents network requests on recomposition)
                 memoryCache {
                     MemoryCache
                         .Builder()
-                        .maxSizePercent(context, 0.25)
+                        .maxSizePercent(context, memoryPercent)
                         .build()
                 }
                 if (cacheSize == 0) {

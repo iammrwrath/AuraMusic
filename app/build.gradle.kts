@@ -32,6 +32,10 @@ plugins {
     alias(libs.plugins.protobuf)
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_compiler_config.conf"))
+}
+
 android {
     namespace = "com.metrolist.music"
     compileSdk = 37
@@ -40,8 +44,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 156
-        versionName = "13.7.3"
+        versionCode = 157
+        versionName = "13.8.0"
         val baseVersionName = requireNotNull(versionName)
         buildConfigField("String", "BASE_VERSION_NAME", "\"$baseVersionName\"")
         buildCommit?.let { versionName = "$baseVersionName+$it" }
