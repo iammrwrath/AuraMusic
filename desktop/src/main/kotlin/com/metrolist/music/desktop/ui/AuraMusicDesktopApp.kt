@@ -20,6 +20,7 @@ import com.metrolist.music.desktop.ui.components.DesktopNavDestination
 import com.metrolist.music.desktop.ui.components.DesktopPlayerBar
 import com.metrolist.music.desktop.ui.components.DesktopQueuePanel
 import com.metrolist.music.desktop.ui.components.DesktopSidebar
+import com.metrolist.music.desktop.ui.components.LoginDialog
 import com.metrolist.music.desktop.ui.screens.ExploreScreen
 import com.metrolist.music.desktop.ui.screens.HomeScreen
 import com.metrolist.music.desktop.ui.screens.LibraryScreen
@@ -33,6 +34,7 @@ fun AuraMusicDesktopApp() {
         var currentDestination by remember { mutableStateOf(DesktopNavDestination.HOME) }
         var isLyricsOpen by remember { mutableStateOf(false) }
         var isQueueOpen by remember { mutableStateOf(false) }
+        var isLoginDialogOpen by remember { mutableStateOf(false) }
         var activeSearchQuery by remember { mutableStateOf("") }
 
         Column(
@@ -51,6 +53,9 @@ fun AuraMusicDesktopApp() {
                     selectedDestination = currentDestination,
                     onDestinationSelected = { destination ->
                         currentDestination = destination
+                    },
+                    onSignInClick = {
+                        isLoginDialogOpen = true
                     }
                 )
 
@@ -69,8 +74,12 @@ fun AuraMusicDesktopApp() {
                                 currentDestination = DesktopNavDestination.SEARCH
                             }
                         )
-                        DesktopNavDestination.LIBRARY -> LibraryScreen()
-                        DesktopNavDestination.SETTINGS -> SettingsScreen()
+                        DesktopNavDestination.LIBRARY -> LibraryScreen(
+                            onSignInClick = { isLoginDialogOpen = true }
+                        )
+                        DesktopNavDestination.SETTINGS -> SettingsScreen(
+                            onSignInClick = { isLoginDialogOpen = true }
+                        )
                     }
                 }
 
@@ -100,5 +109,12 @@ fun AuraMusicDesktopApp() {
                 }
             )
         }
+
+        // Account Sign-in Dialog
+        LoginDialog(
+            isOpen = isLoginDialogOpen,
+            onDismiss = { isLoginDialogOpen = false },
+            onLoginSuccess = { isLoginDialogOpen = false }
+        )
     }
 }

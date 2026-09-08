@@ -26,6 +26,7 @@ data class DesktopPlaylist(
     val title: String,
     val tracks: List<DesktopTrack> = emptyList(),
     val thumbnailUrl: String? = null,
+    val trackCount: Int = 0,
 )
 
 @Serializable
@@ -68,11 +69,22 @@ data class DesktopUserSettings(
 )
 
 @Serializable
+data class DesktopAccount(
+    val name: String = "",
+    val email: String = "",
+    val channelHandle: String = "",
+    val avatarUrl: String? = null,
+    val cookie: String = "",
+    val isLoggedIn: Boolean = false,
+)
+
+@Serializable
 data class DesktopUserData(
     val favorites: List<DesktopTrack> = emptyList(),
     val history: List<DesktopTrack> = emptyList(),
     val playlists: List<DesktopPlaylist> = emptyList(),
     val settings: DesktopUserSettings = DesktopUserSettings(),
+    val account: DesktopAccount = DesktopAccount(),
 )
 
 data class LyricLine(

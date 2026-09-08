@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.metrolist.music.desktop.api.YouTubeDesktopClient
 import com.metrolist.music.desktop.audio.DesktopAudioPlayer
+import com.metrolist.music.desktop.data.DesktopStorage
 import com.metrolist.music.desktop.data.DesktopTrack
 import com.metrolist.music.desktop.ui.theme.AuraPrimary
 import com.metrolist.music.desktop.ui.theme.AuraSecondary
@@ -58,6 +60,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val userData by DesktopStorage.userData.collectAsState()
+    val account = userData.account
     var tracks by remember { mutableStateOf<List<DesktopTrack>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -70,7 +74,7 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(account.isLoggedIn) {
         loadHome()
     }
 
@@ -88,7 +92,7 @@ fun HomeScreen(
         ) {
             Column {
                 Text(
-                    text = "Welcome to AuraMusic",
+                    text = if (account.isLoggedIn) "Welcome back, ${account.name}!" else "Welcome to AuraMusic",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.5).sp
@@ -96,7 +100,7 @@ fun HomeScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Quick picks & trending releases curated for you",
+                    text = if (account.isLoggedIn) "Your personalized quick picks & recommendations" else "Quick picks & trending releases curated for you",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

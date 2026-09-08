@@ -97,4 +97,14 @@ object DesktopStorage {
         _userData.value = _userData.value.copy(settings = transform(current))
         save()
     }
+
+    suspend fun saveAccount(account: DesktopAccount) {
+        _userData.value = _userData.value.copy(account = account)
+        save()
+    }
+
+    suspend fun logout() {
+        _userData.value = _userData.value.copy(account = DesktopAccount())
+        save()
+    }
 }
