@@ -62,11 +62,24 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi)
             packageName = "AuraMusic"
-            packageVersion = "13.8.3"
+            packageVersion = "13.8.4"
             description = "AuraMusic for Desktop"
             copyright = "© 2026 AuraMusic"
             vendor = "AuraMusic"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("src/main/resources"))
+            modules(
+                "java.base",
+                "java.desktop",
+                "java.logging",
+                "java.net.http",
+                "java.scripting",
+                "java.sql",
+                "java.xml",
+                "java.management",
+                "java.naming",
+                "jdk.unsupported",
+                "jdk.unsupported.desktop"
+            )
             windows {
                 menuGroup = "AuraMusic"
                 upgradeUuid = "187e1a3b-24b2-4d05-b049-5de156c7ac56"

@@ -56,6 +56,9 @@ object DesktopAudioPlayer {
     private val _currentLyrics = MutableStateFlow<List<LyricLine>>(emptyList())
     val currentLyrics: StateFlow<List<LyricLine>> = _currentLyrics.asStateFlow()
 
+    private val _isLoadingLyrics = MutableStateFlow(false)
+    val isLoadingLyrics: StateFlow<Boolean> = _isLoadingLyrics.asStateFlow()
+
     private var mediaPlayer: MediaPlayer? = null
     private var progressJob: Job? = null
     private val isPlatformInitialized = AtomicBoolean(false)
@@ -100,9 +103,11 @@ object DesktopAudioPlayer {
         DesktopStorage.addToHistory(track)
 
         // Fetch lyrics concurrently
+        _isLoadingLyrics.value = true
         scope.launch {
             val lyrics = DesktopLyricsService.getLyrics(track.title, track.artist, track.durationSeconds)
             _currentLyrics.value = lyrics
+            _isLoadingLyrics.value = false
         }
 
         // Fetch streaming URL from YouTube
@@ -242,6 +247,17 @@ object DesktopAudioPlayer {
         _shuffle.value = !_shuffle.value
     }
 
+    fun play() = resume()
+    fun skipToNext() = next()
+    fun skipToPrevious() = previous()
+    fun toggleRepeatMode() = toggleRepeat()
+
+    fun playQueue(tracks: List<DesktopTrack>, startIndex: Int = 0) {
+        if (tracks.isEmpty()) return
+        val validIndex = startIndex.coerceIn(0, tracks.size - 1)
+        playTrack(tracks[validIndex], tracks)
+    }
+
     fun removeFromQueue(index: Int) {
         val current = _queue.value.toMutableList()
         if (index in current.indices) {
@@ -257,6 +273,7 @@ object DesktopAudioPlayer {
         _queue.value = emptyList()
         _queueIndex.value = 0
     }
+
 
     private fun onTrackEnded() {
         when (_repeatMode.value) {

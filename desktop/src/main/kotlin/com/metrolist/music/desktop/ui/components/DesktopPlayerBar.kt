@@ -1,12 +1,14 @@
 package com.metrolist.music.desktop.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -47,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +61,11 @@ import com.metrolist.music.desktop.audio.DesktopAudioPlayer
 import com.metrolist.music.desktop.data.DesktopPlaybackState
 import com.metrolist.music.desktop.data.DesktopRepeatMode
 import com.metrolist.music.desktop.data.DesktopStorage
+import com.metrolist.music.desktop.ui.theme.AuraBorder
+import com.metrolist.music.desktop.ui.theme.AuraNeonGradient
+import com.metrolist.music.desktop.ui.theme.AuraPrimary
+import com.metrolist.music.desktop.ui.theme.AuraSurface
+import com.metrolist.music.desktop.ui.theme.AuraSurfaceGlass
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,6 +84,7 @@ fun DesktopPlayerBar(
     val volume by DesktopAudioPlayer.volume.collectAsState()
     val repeatMode by DesktopAudioPlayer.repeatMode.collectAsState()
     val shuffle by DesktopAudioPlayer.shuffle.collectAsState()
+    val queue by DesktopAudioPlayer.queue.collectAsState()
     val userData by DesktopStorage.userData.collectAsState()
 
     val isFavorite = currentTrack?.let { track ->
@@ -84,15 +93,24 @@ fun DesktopPlayerBar(
 
     var isSeeking by remember { mutableStateOf(false) }
     var seekPosition by remember { mutableStateOf(0f) }
+    var previousVolume by remember { mutableStateOf(1f) }
+
+    fun formatTime(ms: Long): String {
+        val totalSecs = (ms / 1000).coerceAtLeast(0)
+        val mins = totalSecs / 60
+        val secs = totalSecs % 60
+        return "%d:%02d".format(mins, secs)
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = modifier
             .fillMaxWidth()
-            .height(90.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f))
-            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .height(92.dp)
+            .background(AuraSurfaceGlass)
+            .border(width = 1.dp, color = AuraBorder)
+            .padding(horizontal = 20.dp, vertical = 6.dp)
     ) {
         // Track Information (Left)
         Row(
@@ -103,22 +121,22 @@ fun DesktopPlayerBar(
                 Box(
                     modifier = Modifier
                         .size(54.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surface)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(AuraSurface)
                 ) {
                     if (!currentTrack?.thumbnailUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = currentTrack?.thumbnailUrl,
                             contentDescription = currentTrack?.title,
                             contentScale = ContentScale.Crop,
-                            modifier = Modifier.size(54.dp)
+                            modifier = Modifier.fillMaxSize()
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.MusicNote,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(28.dp).align(Alignment.Center)
+                            modifier = Modifier.size(26.dp).align(Alignment.Center)
                         )
                     }
                 }
@@ -128,7 +146,7 @@ fun DesktopPlayerBar(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = currentTrack?.title ?: "",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -149,131 +167,152 @@ fun DesktopPlayerBar(
                                 DesktopStorage.toggleFavorite(track)
                             }
                         }
-                    }
+                    },
+                    modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
                         imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite",
-                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (isFavorite) AuraPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(20.dp)
                     )
                 }
             } else {
-                Text(
-                    text = "No track playing",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.04f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MusicNote,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Text(
+                        text = "Select a song to play",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
+                }
             }
         }
 
-        // Playback Controls & Timeline (Center)
+        // Center Controls & Scrubber
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.weight(1f).padding(horizontal = 24.dp)
         ) {
+            // Control Buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Shuffle
-                IconButton(onClick = { DesktopAudioPlayer.toggleShuffle() }) {
+                IconButton(
+                    onClick = { DesktopAudioPlayer.toggleShuffle() },
+                    modifier = Modifier.size(32.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.Shuffle,
                         contentDescription = "Shuffle",
-                        tint = if (shuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (shuffle) AuraPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
                 // Previous
-                IconButton(onClick = { DesktopAudioPlayer.previous() }) {
+                IconButton(
+                    onClick = { DesktopAudioPlayer.skipToPrevious() },
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.SkipPrevious,
                         contentDescription = "Previous",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Play / Pause / Buffering
+                // Play / Pause (Glowing Neon Gradient Button)
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable { DesktopAudioPlayer.togglePlayPause() },
+                        .background(AuraNeonGradient)
+                        .shadow(10.dp, CircleShape)
+                        .clickable {
+                            if (playbackState == DesktopPlaybackState.PLAYING) {
+                                DesktopAudioPlayer.pause()
+                            } else {
+                                DesktopAudioPlayer.play()
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    when (playbackState) {
-                        DesktopPlaybackState.BUFFERING -> {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.5.dp,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                        DesktopPlaybackState.PLAYING -> {
-                            Icon(
-                                imageVector = Icons.Default.Pause,
-                                contentDescription = "Pause",
-                                tint = Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        else -> {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Play",
-                                tint = Color.White,
-                                modifier = Modifier.size(26.dp)
-                            )
-                        }
+                    if (playbackState == DesktopPlaybackState.BUFFERING) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = if (playbackState == DesktopPlaybackState.PLAYING) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (playbackState == DesktopPlaybackState.PLAYING) "Pause" else "Play",
+                            tint = Color.White,
+                            modifier = Modifier.size(26.dp)
+                        )
                     }
                 }
 
                 // Next
-                IconButton(onClick = { DesktopAudioPlayer.next() }) {
+                IconButton(
+                    onClick = { DesktopAudioPlayer.skipToNext() },
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.SkipNext,
                         contentDescription = "Next",
                         tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(22.dp)
                     )
                 }
 
-                // Repeat
-                IconButton(onClick = { DesktopAudioPlayer.toggleRepeat() }) {
-                    val repeatIcon = when (repeatMode) {
+                // Repeat Mode
+                IconButton(
+                    onClick = { DesktopAudioPlayer.toggleRepeatMode() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    val icon = when (repeatMode) {
                         DesktopRepeatMode.ONE -> Icons.Default.RepeatOne
                         else -> Icons.Default.Repeat
                     }
-                    val repeatTint = when (repeatMode) {
-                        DesktopRepeatMode.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                        else -> MaterialTheme.colorScheme.primary
-                    }
                     Icon(
-                        imageVector = repeatIcon,
+                        imageVector = icon,
                         contentDescription = "Repeat",
-                        tint = repeatTint,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (repeatMode != DesktopRepeatMode.NONE) AuraPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            // Timeline Scrub Bar
+            // Scrubber Bar with Elapsed & Total Duration
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().height(26.dp)
             ) {
-                val currentSec = (if (isSeeking) seekPosition.toLong() else positionMs) / 1000
-                val totalSec = durationMs / 1000
-
+                val currentPos = if (isSeeking) seekPosition.toLong() else positionMs
                 Text(
-                    text = "%d:%02d".format(currentSec / 60, currentSec % 60),
+                    text = formatTime(currentPos),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp
+                    modifier = Modifier.width(38.dp)
                 )
 
                 Slider(
@@ -286,78 +325,109 @@ fun DesktopPlayerBar(
                         DesktopAudioPlayer.seekTo(seekPosition.toLong())
                         isSeeking = false
                     },
-                    valueRange = 0f..durationMs.coerceAtLeast(1000L).toFloat(),
+                    valueRange = 0f..(durationMs.coerceAtLeast(1L).toFloat()),
                     colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                        thumbColor = Color.White,
+                        activeTrackColor = AuraPrimary,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.12f)
                     ),
-                    modifier = Modifier.weight(1f).padding(horizontal = 10.dp)
+                    modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
 
                 Text(
-                    text = "%d:%02d".format(totalSec / 60, totalSec % 60),
+                    text = formatTime(durationMs),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp
+                    modifier = Modifier.width(38.dp)
                 )
             }
         }
 
-        // Auxiliary Controls (Right: Lyrics, Queue, Volume)
+        // Action Drawers & Volume (Right)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.width(280.dp)
         ) {
             // Lyrics Toggle
-            IconButton(onClick = onToggleLyrics) {
+            IconButton(
+                onClick = onToggleLyrics,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isLyricsOpen) AuraPrimary.copy(alpha = 0.2f) else Color.Transparent)
+            ) {
                 Icon(
                     imageVector = Icons.Default.FormatQuote,
                     contentDescription = "Lyrics",
-                    tint = if (isLyricsOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            // Queue Toggle
-            IconButton(onClick = onToggleQueue) {
-                Icon(
-                    imageVector = Icons.Default.QueueMusic,
-                    contentDescription = "Queue",
-                    tint = if (isQueueOpen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // Volume Control
-            val volumeIcon = when {
-                volume <= 0.01f -> Icons.Default.VolumeMute
-                volume < 0.5f -> Icons.Default.VolumeDown
-                else -> Icons.Default.VolumeUp
-            }
-
-            IconButton(onClick = {
-                if (volume > 0f) DesktopAudioPlayer.setVolume(0f) else DesktopAudioPlayer.setVolume(0.7f)
-            }) {
-                Icon(
-                    imageVector = volumeIcon,
-                    contentDescription = "Volume",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isLyricsOpen) AuraPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp)
                 )
             }
 
+            // Queue Toggle with live track count badge
+            IconButton(
+                onClick = onToggleQueue,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isQueueOpen) AuraPrimary.copy(alpha = 0.2f) else Color.Transparent)
+            ) {
+                Box {
+                    Icon(
+                        imageVector = Icons.Default.QueueMusic,
+                        contentDescription = "Queue",
+                        tint = if (isQueueOpen) AuraPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    if (queue.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(AuraPrimary)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Volume Icon (Click to Mute / Restore)
+            IconButton(
+                onClick = {
+                    if (volume > 0f) {
+                        previousVolume = volume
+                        DesktopAudioPlayer.setVolume(0f)
+                    } else {
+                        DesktopAudioPlayer.setVolume(if (previousVolume > 0f) previousVolume else 0.8f)
+                    }
+                },
+                modifier = Modifier.size(32.dp)
+            ) {
+                val volIcon = when {
+                    volume <= 0f -> Icons.Default.VolumeMute
+                    volume < 0.5f -> Icons.Default.VolumeDown
+                    else -> Icons.Default.VolumeUp
+                }
+                Icon(
+                    imageVector = volIcon,
+                    contentDescription = "Volume",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Volume Slider
             Slider(
                 value = volume,
                 onValueChange = { DesktopAudioPlayer.setVolume(it) },
                 valueRange = 0f..1f,
                 colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    thumbColor = Color.White,
+                    activeTrackColor = AuraPrimary,
+                    inactiveTrackColor = Color.White.copy(alpha = 0.12f)
                 ),
                 modifier = Modifier.width(100.dp)
             )
