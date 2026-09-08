@@ -363,7 +363,6 @@
     <string name="wrapped_create_playlist">צור רשימת השמעה</string>
     <string name="wrapped_playlist_saved">רשימת ההשמעה נשמרה</string>
     <string name="no_profiles">אין פרופילי אקולייזר</string>
-    <string name="stands_with_palestine">הפרויקט הזה עומד לצד פלסטין 🇵🇸</string>
     <string name="system_equalizer">אקולייזר מערכת</string>
     <plurals name="band_count">
         <item quantity="one">%d פס</item>

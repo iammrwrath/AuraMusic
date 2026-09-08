@@ -62,7 +62,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi)
             packageName = "AuraMusic"
-            packageVersion = "13.8.4"
+            packageVersion = "13.8.5"
             description = "AuraMusic for Desktop"
             copyright = "© 2026 AuraMusic"
             vendor = "AuraMusic"
