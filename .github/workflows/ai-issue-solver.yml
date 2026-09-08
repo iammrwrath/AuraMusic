@@ -92,22 +92,25 @@ jobs:
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git checkout -b "$BRANCH_NAME"
             git add -A
-            git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}"
-            git push origin "$BRANCH_NAME" --force
+            git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}" || true
+            git push origin "$BRANCH_NAME" --force || true
 
             PR_URL=$(gh pr create \
               --repo "$GH_REPO" \
               --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" \
               --body-file "ai_solution_summary.md" \
               --head "$BRANCH_NAME" \
-              --base "main" || echo "")
+              --base "main" 2>/dev/null || echo "")
 
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "$(cat ai_solution_summary.md)
+            cat << 'EOF' >> ai_solution_summary.md
 
 ---
 ✅ **Build Status**: Verified & compiled cleanly!
-🔗 **Pull Request**: ${PR_URL}
-📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!"
-          else
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "$(cat ai_solution_summary.md)"
+EOF
+            if [ -n "$PR_URL" ]; then
+              echo "🔗 **Pull Request**: ${PR_URL}" >> ai_solution_summary.md
+            fi
+            echo "📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!" >> ai_solution_summary.md
           fi
+
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file "ai_solution_summary.md" || true

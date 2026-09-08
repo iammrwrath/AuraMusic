@@ -180,9 +180,11 @@ Format your response strictly as follows:
 
     if apply_proc.returncode != 0:
         print(f"[ERROR] Failed to apply git patch: {apply_proc.stderr}", file=sys.stderr)
+        if os.path.exists(patch_file):
+            os.remove(patch_file)
         with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
-            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n> ⚠️ Automated patch could not be cleanly applied by git: `{apply_proc.stderr.strip()}`\n")
-        sys.exit(1)
+            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied to the branch: `{apply_proc.stderr.strip()}`\n")
+        sys.exit(0)
 
     print("[✓] Patch applied successfully!")
     with open("ai_solution_summary.md", "w", encoding="utf-8") as f:

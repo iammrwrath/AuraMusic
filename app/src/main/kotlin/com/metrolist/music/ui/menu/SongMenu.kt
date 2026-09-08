@@ -309,8 +309,8 @@ fun SongMenu(
                 }
                 TextButton(
                     onClick = {
-                        val entityId = song.song.uploadEntityId
-                        if (entityId == null) {
+                        val entityId = song.song.uploadEntityId ?: song.song.id
+                        if (entityId.isBlank()) {
                             Toast
                                 .makeText(
                                     context,

@@ -66,6 +66,10 @@ object BetterLyrics {
         if (response.status == HttpStatusCode.OK) {
             val ttml = response.body<TTMLResponse>().ttml?.trim()?.takeIf { it.isNotEmpty() }
             ttml
+        } else if (response.status == HttpStatusCode.Unauthorized) {
+            // Uncached queries in BetterLyrics public API require an API key; log as debug cache miss so LyricsHelper falls back cleanly
+            Timber.tag(TAG).d("Query not in BetterLyrics public cache (401 Unauthorized), falling back")
+            null
         } else {
             Timber.tag(TAG).w("API returned status: ${response.status}")
             null

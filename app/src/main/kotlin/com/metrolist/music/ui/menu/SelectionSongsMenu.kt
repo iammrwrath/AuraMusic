@@ -241,8 +241,8 @@ fun SelectionSongMenu(
                                 var successCount = 0
                                 songsToDelete.forEachIndexed { index, song ->
                                     deleteProgress = index + 1
-                                    val entityId = song.song.uploadEntityId
-                                    if (entityId != null) {
+                                    val entityId = song.song.uploadEntityId ?: song.song.id
+                                    if (entityId.isNotBlank()) {
                                         YouTube.deleteUploadedSong(entityId).onSuccess {
                                             database.query {
                                                 delete(song.song)

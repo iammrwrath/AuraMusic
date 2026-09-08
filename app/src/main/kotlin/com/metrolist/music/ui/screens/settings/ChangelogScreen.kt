@@ -43,8 +43,24 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
     ReleaseInfo(
         tagName = BuildConfig.VERSION_NAME,
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
-        releaseDate = "2026-09-05",
+        releaseDate = "2026-09-07",
         description = """
+## 🎧 AuraMusic v13.7.3 - CI Self-Healing Solver & Library Reliability (Patch Release)
+
+### 🤖 CI & Self-Healing Pipeline
+- **Issue Solver Bash Escaping**: Replaced multiline bash command substitution with `--body-file` in `ai-issue-solver.yml`, eliminating unexpected EOF quoting errors when posting automated diagnosis summaries.
+- **Graceful Git Conflict Handling**: Enhanced `ai_issue_solver.py` to cleanly post AI diagnosis and suggested diffs on issues even if working-tree patch offsets fail, preventing red workflow build failures.
+- **Headless Build Keystore**: Added `persistent-debug.keystore` and automatic fallback keystore generation in `build.gradle.kts` so headless CI and release runners never fail with missing keystore errors.
+
+### 🎵 InnerTube & Library Stability
+- **Resilient Home & New Release Parsing**: Fixed `AlbumItem` parsing in `HomePage.kt` and `NewReleaseAlbumPage.kt` so new release albums are never discarded when `watchPlaylistEndpoint.playlistId` is absent from thumbnail overlays. Automatically derives playlist IDs (`OLAK5uy_...`) from album browse IDs (`MPREb_...`).
+- **Flexible Subtitle Parsing**: Restored albums with non-standard subtitle artist runs so they display seamlessly in carousels and grids.
+- **Uploaded Song Entity ID Extraction**: Fixed `uploadEntityId` parsing in `LibraryPage.kt` to inspect `menuServiceItemRenderer` service endpoints and confirm dialog commands.
+- **Upload Deletion Fallback**: Added fallback to song ID in `SongMenu.kt` and `SelectionSongsMenu.kt` so uploaded songs can always be deleted from YouTube Music and the local database.
+- **BetterLyrics Cache Miss Logging**: Demoted public uncached 401 responses to debug logs, preventing false warning spam while cleanly delegating to secondary lyrics providers.
+
+---
+
 ## 🎧 AuraMusic v13.7.2 - Update Scoping & Version Logic (Patch Release)
 
 ### 🔔 Update Scoping & Logic Improvements

@@ -23,20 +23,31 @@ data class LibraryPage(
     companion object {
         fun fromMusicTwoRowItemRenderer(renderer: MusicTwoRowItemRenderer): YTItem? {
             return when {
-                renderer.isAlbum -> AlbumItem(
-                    browseId = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
-                    playlistId = renderer.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content
+                renderer.isAlbum -> {
+                    val browseId = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null
+                    val playlistId = renderer.thumbnailOverlay?.musicItemThumbnailOverlayRenderer?.content
                         ?.musicPlayButtonRenderer?.playNavigationEndpoint
-                        ?.watchPlaylistEndpoint?.playlistId ?: return null,
-                    title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                    artists = parseArtists(renderer.subtitle?.runs),
-                    year = renderer.subtitle?.runs?.lastOrNull()?.text?.toIntOrNull(),
-                    thumbnail = renderer.thumbnailRenderer.getThumbnailUrl()
-                        ?: return null,
-                    explicit = renderer.subtitleBadges?.find {
-                        it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
-                    } != null
-                )
+                        ?.let { ep ->
+                            ep.watchPlaylistEndpoint?.playlistId ?: ep.watchEndpoint?.playlistId
+                        }
+                        ?: if (browseId.startsWith("MPREb_")) {
+                            "OLAK5uy_" + browseId.removePrefix("MPREb_")
+                        } else {
+                            browseId
+                        }
+                    AlbumItem(
+                        browseId = browseId,
+                        playlistId = playlistId,
+                        title = renderer.title.runs?.firstOrNull()?.text ?: return null,
+                        artists = parseArtists(renderer.subtitle?.runs),
+                        year = renderer.subtitle?.runs?.lastOrNull()?.text?.toIntOrNull(),
+                        thumbnail = renderer.thumbnailRenderer.getThumbnailUrl()
+                            ?: return null,
+                        explicit = renderer.subtitleBadges?.find {
+                            it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
+                        } != null
+                    )
+                }
 
                 renderer.isPlaylist -> PlaylistItem(
                     id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,
@@ -188,12 +199,20 @@ data class LibraryPage(
                     val thumbnailUrl = renderer.thumbnail?.getThumbnailUrl() ?: return null
 
                     // Extract uploadEntityId from delete menu item (for uploaded songs)
-                    // The entityId is nested in confirmDialogEndpoint -> content -> confirmDialogRenderer ->
-                    // confirmButton -> buttonRenderer -> command -> musicDeletePrivatelyOwnedEntityCommand -> entityId
+                    // The entityId can be on menuServiceItemRenderer (serviceEndpoint) or menuNavigationItemRenderer (navigationEndpoint),
+                    // either directly as deletePrivatelyOwnedEntityCommand or nested inside confirmDialogEndpoint
                     val uploadEntityId = renderer.menu?.menuRenderer?.items?.firstNotNullOfOrNull { item ->
-                        item.menuNavigationItemRenderer?.navigationEndpoint?.confirmDialogEndpoint
-                            ?.content?.confirmDialogRenderer?.confirmButton?.buttonRenderer
-                            ?.command?.musicDeletePrivatelyOwnedEntityCommand?.entityId
+                        val serviceEp = item.menuServiceItemRenderer?.serviceEndpoint
+                        val navEp = item.menuNavigationItemRenderer?.navigationEndpoint
+                        serviceEp?.deletePrivatelyOwnedEntityCommand?.entityId
+                            ?: serviceEp?.confirmDialogEndpoint?.content?.confirmDialogRenderer?.confirmButton?.buttonRenderer?.command?.musicDeletePrivatelyOwnedEntityCommand?.entityId
+                            ?: navEp?.deletePrivatelyOwnedEntityCommand?.entityId
+                            ?: navEp?.confirmDialogEndpoint?.content?.confirmDialogRenderer?.confirmButton?.buttonRenderer?.command?.musicDeletePrivatelyOwnedEntityCommand?.entityId
+                    } ?: videoId.takeIf {
+                        renderer.menu?.menuRenderer?.items?.any {
+                            it.menuServiceItemRenderer?.icon?.iconType == "DELETE" ||
+                            it.menuNavigationItemRenderer?.icon?.iconType == "DELETE"
+                        } == true
                     }
                     timber.log.Timber.d("Parsed uploaded song: id=$videoId, entityId=$uploadEntityId")
 
