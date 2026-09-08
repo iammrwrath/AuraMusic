@@ -51,12 +51,22 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.metrolist.innertube.utils.parseCookieString
+import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.CONTENT_TYPE_HEADER
+import com.metrolist.music.constants.NothingThemeKey
+import com.metrolist.music.ui.theme.ndotFontFamily
+import com.metrolist.music.utils.PlaylistImporter
+import kotlinx.coroutines.launch
 import com.metrolist.music.constants.CONTENT_TYPE_PLAYLIST
 import com.metrolist.music.constants.GridItemSize
 import com.metrolist.music.constants.GridItemsSizeKey
@@ -115,6 +125,35 @@ fun LibraryPlaylistsScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val database = LocalDatabase.current
+    val nothingTheme by rememberPreference(NothingThemeKey, defaultValue = false)
+    var isImporting by remember { mutableStateOf(false) }
+
+    val m3uPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            isImporting = true
+            coroutineScope.launch {
+                val result = PlaylistImporter.importM3U(context, uri, database)
+                isImporting = false
+                result.onSuccess { (title, count) ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.m3u_import_success, title, count),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }.onFailure { err ->
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.m3u_import_failed) + ": ${err.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
 
     val (sortType, onSortTypeChange) = rememberEnumPreference(
         PlaylistSortTypeKey,
@@ -364,12 +403,23 @@ fun LibraryPlaylistsScreen(
                     visibleResults.count { !it.autoPlaylist },
                 ),
                 style = MaterialTheme.typography.titleSmall,
+                fontFamily = if (nothingTheme) ndotFontFamily else null,
                 color = MaterialTheme.colorScheme.secondary,
             )
 
             IconButton(
+                onClick = { m3uPickerLauncher.launch("*/*") },
+                modifier = Modifier.padding(start = 4.dp).size(40.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.upload),
+                    contentDescription = stringResource(R.string.import_m3u_playlist),
+                )
+            }
+
+            IconButton(
                 onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 8.dp).size(40.dp),
+                modifier = Modifier.padding(start = 4.dp).size(40.dp),
             ) {
                 Icon(
                     painter = painterResource(R.drawable.search),

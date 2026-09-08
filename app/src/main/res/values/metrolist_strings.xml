@@ -731,6 +731,14 @@
     <string name="palette_brown">Brown</string>
     <string name="palette_grey">Grey</string>
     <string name="palette_blue_grey">Blue Grey</string>
+    <string name="palette_nothing_red">Nothing Red</string>
+    <string name="nothing_theme_title">Nothing OS (Dot Matrix)</string>
+    <string name="nothing_theme_desc">Minimalist Nothing Phone style with authentic NDot matrix typography, pure black OLED background, and Nothing Red accents.</string>
+    <string name="import_m3u_playlist">Import M3U / M3U8 Playlist</string>
+    <string name="import_m3u_playlist_desc">Scan and import local playlist files from device storage</string>
+    <string name="m3u_importing">Importing playlist…</string>
+    <string name="m3u_import_success">Imported \"%1$s\" with %2$d songs</string>
+    <string name="m3u_import_failed">Failed to import playlist</string>
 
     <!-- Theme Content Descriptions -->
     <string name="cd_back">Back</string>

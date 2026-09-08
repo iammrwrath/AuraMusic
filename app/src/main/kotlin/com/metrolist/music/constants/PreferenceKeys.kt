@@ -20,6 +20,9 @@ val SelectedThemeColorKey = intPreferencesKey("selectedThemeColor")
 val DarkModeKey = stringPreferencesKey("darkMode")
 val PureBlackKey = booleanPreferencesKey("pureBlack")
 val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
+val NothingThemeKey = booleanPreferencesKey("nothingTheme")
+val NothingDotMatrixFontKey = booleanPreferencesKey("nothingDotMatrixFont")
+const val NothingRedColor = 0xFFD71921.toInt()
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
 
 enum class MiniPlayerBackgroundStyle {

@@ -26,17 +26,20 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
 val DefaultThemeColor = Color(0xFFED5564)
+val NothingThemeColor = Color(0xFFD71921)
 
 @Composable
 fun MetrolistTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
+    nothingTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
+    val effectiveThemeColor = if (nothingTheme) NothingThemeColor else themeColor
     // Determine if system dynamic colors should be used (Android S+ and default theme color)
-    val useSystemDynamicColor = (themeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+    val useSystemDynamicColor = (!nothingTheme && effectiveThemeColor == DefaultThemeColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
 
     // Select the appropriate color scheme generation method
     val baseColorScheme = if (useSystemDynamicColor) {
@@ -45,25 +48,45 @@ fun MetrolistTheme(
     } else {
         // Use materialKolor only when a specific seed color is provided
         rememberDynamicColorScheme(
-            seedColor = themeColor, // themeColor is guaranteed non-default here
-            isDark = darkTheme,
+            seedColor = effectiveThemeColor,
+            isDark = if (nothingTheme) true else darkTheme,
             specVersion = ColorSpec.SpecVersion.SPEC_2025,
-            style = PaletteStyle.TonalSpot // Keep existing style
+            style = PaletteStyle.TonalSpot
         )
     }
 
-    // Apply pureBlack modification if needed, similar to original logic
-    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme) {
-        if (darkTheme && pureBlack) {
+    // Apply Nothing OS minimal palette or pureBlack modification
+    val colorScheme = remember(baseColorScheme, pureBlack, darkTheme, nothingTheme) {
+        if (nothingTheme) {
+            baseColorScheme.copy(
+                primary = Color(0xFFD71921),
+                onPrimary = Color.White,
+                primaryContainer = Color(0xFF2A1012),
+                onPrimaryContainer = Color(0xFFFFDAD9),
+                surface = Color.Black,
+                onSurface = Color(0xFFEEEEEE),
+                background = Color.Black,
+                onBackground = Color(0xFFEEEEEE),
+                surfaceVariant = Color(0xFF141414),
+                onSurfaceVariant = Color(0xFFB0B0B0),
+                surfaceContainer = Color(0xFF121212),
+                surfaceContainerHigh = Color(0xFF1A1A1A),
+                surfaceContainerHighest = Color(0xFF222222),
+                outline = Color(0xFF2E2E2E),
+                outlineVariant = Color(0xFF1F1F1F),
+            )
+        } else if (darkTheme && pureBlack) {
             baseColorScheme.pureBlack(true)
         } else {
             baseColorScheme
         }
     }
 
-    // Use standard MaterialTheme instead of MaterialExpressiveTheme
+    val typography = if (nothingTheme) NothingTypography else MaterialTheme.typography
+
     MaterialTheme(
         colorScheme = colorScheme,
+        typography = typography,
         content = content,
     )
 }

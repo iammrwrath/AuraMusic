@@ -160,6 +160,7 @@ import com.metrolist.music.constants.PauseSearchHistoryKey
 import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
 import com.metrolist.music.constants.PureBlackKey
+import com.metrolist.music.constants.NothingThemeKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
@@ -620,9 +621,10 @@ class MainActivity : FragmentActivity() {
         val enableLandscapeScaling by rememberPreference(EnableLandscapeScalingKey, defaultValue = false)
         val userDensityScale by rememberPreference(DensityScaleKey, defaultValue = 1f)
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
+        val nothingTheme by rememberPreference(NothingThemeKey, defaultValue = false)
         val pureBlack =
-            remember(pureBlackEnabled, useDarkTheme) {
-                pureBlackEnabled && useDarkTheme
+            remember(pureBlackEnabled, useDarkTheme, nothingTheme) {
+                nothingTheme || (pureBlackEnabled && useDarkTheme)
             }
 
         val (selectedThemeColorInt) = rememberPreference(SelectedThemeColorKey, defaultValue = DefaultThemeColor.toArgb())
@@ -689,9 +691,10 @@ class MainActivity : FragmentActivity() {
         }
 
         MetrolistTheme(
-            darkTheme = useDarkTheme,
+            darkTheme = if (nothingTheme) true else useDarkTheme,
             pureBlack = pureBlack,
             themeColor = themeColor,
+            nothingTheme = nothingTheme,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current

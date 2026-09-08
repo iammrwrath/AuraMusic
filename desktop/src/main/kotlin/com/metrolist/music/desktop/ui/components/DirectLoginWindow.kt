@@ -96,12 +96,20 @@ object DirectLoginManager {
             val btnGroup = JPanel(FlowLayout(FlowLayout.RIGHT, 8, 0)).apply {
                 isOpaque = false
             }
+            val browserBtn = JButton("Open in Browser").apply {
+                isFocusPainted = false
+            }
+            val pasteBtn = JButton("Paste Cookie").apply {
+                isFocusPainted = false
+            }
             val reloadBtn = JButton("Reload Page").apply {
                 isFocusPainted = false
             }
             val checkBtn = JButton("I'm Signed In").apply {
                 isFocusPainted = false
             }
+            btnGroup.add(browserBtn)
+            btnGroup.add(pasteBtn)
             btnGroup.add(reloadBtn)
             btnGroup.add(checkBtn)
             bottomPanel.add(btnGroup, BorderLayout.EAST)
@@ -239,9 +247,33 @@ object DirectLoginManager {
                         }
                     }
 
+                    browserBtn.addActionListener {
+                        try {
+                            java.awt.Desktop.getDesktop().browse(URI.create("https://music.youtube.com/"))
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+
+                    pasteBtn.addActionListener {
+                        val input = javax.swing.JOptionPane.showInputDialog(
+                            dialog,
+                            "Paste your YouTube Music cookie string (must contain SAPISID or __Secure-3PAPISID):",
+                            "Manual Cookie Import",
+                            javax.swing.JOptionPane.PLAIN_MESSAGE
+                        )
+                        if (!input.isNullOrBlank()) {
+                            SwingUtilities.invokeLater {
+                                statusLabel.text = "Validating pasted cookie..."
+                                progressBar.isVisible = true
+                            }
+                            verifyAndCompleteSession(input.trim())
+                        }
+                    }
+
                     reloadBtn.addActionListener {
                         Platform.runLater {
-                            engine.load("https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com")
+                            engine.load("https://music.youtube.com/")
                         }
                     }
 
@@ -261,7 +293,7 @@ object DirectLoginManager {
                         }
                     }
 
-                    engine.load("https://accounts.google.com/ServiceLogin?continue=https%3A%2F%2Fmusic.youtube.com")
+                    engine.load("https://music.youtube.com/")
                 } catch (e: Throwable) {
                     e.printStackTrace()
                     SwingUtilities.invokeLater {

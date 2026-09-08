@@ -46,6 +46,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -75,11 +77,13 @@ import com.materialkolor.rememberDynamicColorScheme
 import com.metrolist.music.R
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
+import com.metrolist.music.constants.NothingThemeKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.ndotFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 
@@ -90,6 +94,7 @@ data class ThemePalette(
 
 val PaletteColors = listOf(
     ThemePalette(R.string.palette_dynamic, Color.Transparent), // Sentinel for System/Dynamic colors
+    ThemePalette(R.string.palette_nothing_red, Color(0xFFD71921)), // Iconic Nothing Red
     ThemePalette(R.string.palette_crimson, Color(0xFFEC5464)), // Slightly shifted from DefaultThemeColor (0xFFED5564) to avoid conflict
     ThemePalette(R.string.palette_rose, Color(0xFFD81B60)),
     ThemePalette(R.string.palette_purple, Color(0xFF8E24AA)),
@@ -146,6 +151,16 @@ fun ThemeScreen(
         onDynamicThemeChange(isDynamicColor)
     }
 
+    val (nothingTheme, onNothingThemeChangeRaw) = rememberPreference(NothingThemeKey, defaultValue = false)
+    val onNothingThemeChange: (Boolean) -> Unit = { enabled ->
+        onNothingThemeChangeRaw(enabled)
+        if (enabled) {
+            onDarkModeChange(DarkMode.ON)
+            onPureBlackChange(true)
+            handleColorSelection(Color(0xFFD71921))
+        }
+    }
+
     if (isLandscape) {
         LandscapeThemeLayout(
             innerPadding = PaddingValues(0.dp),
@@ -153,6 +168,8 @@ fun ThemeScreen(
             onDarkModeChange = onDarkModeChange,
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
+            nothingTheme = nothingTheme,
+            onNothingThemeChange = onNothingThemeChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = handleColorSelection
         )
@@ -163,6 +180,8 @@ fun ThemeScreen(
             onDarkModeChange = onDarkModeChange,
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
+            nothingTheme = nothingTheme,
+            onNothingThemeChange = onNothingThemeChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = handleColorSelection
         )
@@ -188,6 +207,8 @@ fun PortraitThemeLayout(
     onDarkModeChange: (DarkMode) -> Unit,
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
+    nothingTheme: Boolean = false,
+    onNothingThemeChange: (Boolean) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -219,6 +240,8 @@ fun PortraitThemeLayout(
             onDarkModeChange = onDarkModeChange,
             pureBlack = pureBlack,
             onPureBlackChange = onPureBlackChange,
+            nothingTheme = nothingTheme,
+            onNothingThemeChange = onNothingThemeChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = onSelectedThemeColorChange
         )
@@ -234,6 +257,8 @@ fun LandscapeThemeLayout(
     onDarkModeChange: (DarkMode) -> Unit,
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
+    nothingTheme: Boolean = false,
+    onNothingThemeChange: (Boolean) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -276,6 +301,8 @@ fun LandscapeThemeLayout(
                 onDarkModeChange = onDarkModeChange,
                 pureBlack = pureBlack,
                 onPureBlackChange = onPureBlackChange,
+                nothingTheme = nothingTheme,
+                onNothingThemeChange = onNothingThemeChange,
                 selectedThemeColor = selectedThemeColor,
                 onSelectedThemeColorChange = onSelectedThemeColorChange
             )
@@ -291,6 +318,8 @@ fun ThemeControls(
     onDarkModeChange: (DarkMode) -> Unit,
     pureBlack: Boolean,
     onPureBlackChange: (Boolean) -> Unit,
+    nothingTheme: Boolean = false,
+    onNothingThemeChange: (Boolean) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -375,6 +404,64 @@ fun ThemeControls(
                             onPureBlackChange(true)
                         },
                         showIcon = false
+                    )
+                }
+            }
+
+            // Nothing OS (Dot Matrix) Mode Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (nothingTheme) Color(0xFF141414) else MaterialTheme.colorScheme.surfaceContainer
+                ),
+                border = BorderStroke(1.dp, if (nothingTheme) Color(0xFFD71921) else MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNothingThemeChange(!nothingTheme) }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = stringResource(R.string.nothing_theme_title),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontFamily = ndotFontFamily,
+                                color = if (nothingTheme) Color.White else MaterialTheme.colorScheme.onSurface
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFFD71921))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "NDOT",
+                                    fontFamily = ndotFontFamily,
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.nothing_theme_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (nothingTheme) Color(0xFFAAAAAA) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = nothingTheme,
+                        onCheckedChange = onNothingThemeChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFFD71921),
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
                     )
                 }
             }
