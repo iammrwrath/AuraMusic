@@ -59,13 +59,18 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi)
             packageName = "AuraMusic"
-            packageVersion = "13.8.0"
+            packageVersion = "13.8.1"
             description = "AuraMusic for Desktop"
             copyright = "© 2026 AuraMusic"
             vendor = "AuraMusic"
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("src/main/resources"))
             windows {
                 menuGroup = "AuraMusic"
                 upgradeUuid = "187e1a3b-24b2-4d05-b049-5de156c7ac56"
+                shortcut = true
+                menu = true
+                dirChooser = true
+                perUserInstall = false
             }
         }
     }
