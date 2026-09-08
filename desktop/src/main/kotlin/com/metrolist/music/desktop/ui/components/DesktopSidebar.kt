@@ -109,7 +109,7 @@ fun DesktopSidebar(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "Desktop v13.8.1 (Patch)",
+                    text = "Desktop v13.8.2",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
