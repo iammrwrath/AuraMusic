@@ -47,6 +47,7 @@ dependencies {
     }
     implementation("org.openjfx:javafx-base:21.0.2:$jfxClassifier")
     implementation("org.openjfx:javafx-graphics:21.0.2:$jfxClassifier")
+    implementation("org.openjfx:javafx-controls:21.0.2:$jfxClassifier")
     implementation("org.openjfx:javafx-media:21.0.2:$jfxClassifier")
     implementation("org.openjfx:javafx-web:21.0.2:$jfxClassifier")
     implementation("org.openjfx:javafx-swing:21.0.2:$jfxClassifier")
@@ -61,7 +62,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Msi)
             packageName = "AuraMusic"
-            packageVersion = "13.8.2"
+            packageVersion = "13.8.3"
             description = "AuraMusic for Desktop"
             copyright = "© 2026 AuraMusic"
             vendor = "AuraMusic"
@@ -77,3 +78,4 @@ compose.desktop {
         }
     }
 }
+

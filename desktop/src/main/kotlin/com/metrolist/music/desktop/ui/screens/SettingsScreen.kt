@@ -286,7 +286,7 @@ fun SettingsScreen(
             description = "Application specifications and credits"
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                AboutInfoRow("Version", "13.8.2 Release")
+                AboutInfoRow("Version", "13.8.3 Release")
                 AboutInfoRow("Platform", "Compose Multiplatform for Desktop (JVM 21)")
                 AboutInfoRow("Graphics Engine", "Skia / Direct3D Hardware Accelerated")
                 AboutInfoRow("Audio Backend", "OpenJFX Media Streaming Engine (AAC / MP3)")
