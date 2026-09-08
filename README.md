@@ -22,7 +22,7 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.5 Released!
+> ### 🚀 Version 13.8.6 Released!
 > AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS Dot Matrix** mode, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---
@@ -91,16 +91,16 @@
 | Package | Format | Compatibility | Download |
 | :--- | :--- | :--- | :--- |
 | **AuraMusic Universal** | `.apk` | Android 8.0+ (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [⬇️ Download AuraMusic.apk](https://github.com/iammrwrath/AuraMusic/releases/latest/download/AuraMusic.apk) |
-| **AuraMusic v13.8.5** | `.apk` | Specific Release Version | [⬇️ Download v13.8.5](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.5/AuraMusic-v13.8.5.apk) |
+| **AuraMusic v13.8.6** | `.apk` | Specific Release Version | [⬇️ Download v13.8.6](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.6/AuraMusic-v13.8.6.apk) |
 
 <br/>
 
 ### Desktop (Windows / macOS / Linux)
 | Platform | Package | Description | Download |
 | :--- | :--- | :--- | :--- |
-| **Windows** | Setup `.exe` | Recommended Windows Installer with Start Menu shortcut | [⬇️ Download Setup.exe](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.5/AuraMusic-Setup-13.8.4.exe) |
-| **Windows** | Windows `.msi` | Windows MSI Installer package | [⬇️ Download .msi](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.5/AuraMusic-13.8.4.msi) |
-| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.5/AuraMusic-Desktop.jar) |
+| **Windows** | Setup `.exe` | Recommended Windows Installer with Start Menu shortcut | [⬇️ Download Setup.exe](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.6/AuraMusic-Setup-13.8.4.exe) |
+| **Windows** | Windows `.msi` | Windows MSI Installer package | [⬇️ Download .msi](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.6/AuraMusic-13.8.4.msi) |
+| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.6/AuraMusic-Desktop.jar) |
 
 </div>
 
