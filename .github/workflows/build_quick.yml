@@ -1,4 +1,4 @@
-﻿name: Quick Test Build
+name: Quick Test Build
 
 # Manual only: on push this built exactly the same FOSS release APK as the
 # "Build Release (foss)" job in build.yml, doubling the cost of every push.
@@ -47,6 +47,9 @@ jobs:
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
 
       - name: Sign APK
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          HAS_KEYSTORE: ${{ secrets.KEYSTORE != '' }}
         uses: ilharp/sign-android-release@v2.0.0
         with:
           releaseDir: app/build/outputs/apk/foss/release/
@@ -60,7 +63,8 @@ jobs:
         run: |
           OUTPUT_DIR="app/build/outputs/apk/foss/release"
           mkdir -p "$OUTPUT_DIR/out"
-          find "$OUTPUT_DIR" -name "*-signed.apk" -o -name "*-unsigned-signed.apk" | xargs -I{} mv {} "$OUTPUT_DIR/out/app-universal-test-release.apk"
+          APK_FILE=$(find "$OUTPUT_DIR" -maxdepth 1 -name "*-signed.apk" -o -name "*-unsigned-signed.apk" -o -name "*.apk" | head -1)
+          cp "$APK_FILE" "$OUTPUT_DIR/out/app-universal-test-release.apk"
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v6

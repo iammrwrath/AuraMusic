@@ -102,11 +102,9 @@ jobs:
               --head "$BRANCH_NAME" \
               --base "main" 2>/dev/null || echo "")
 
-            cat << 'EOF' >> ai_solution_summary.md
-
----
-✅ **Build Status**: Verified & compiled cleanly!
-EOF
+            echo "" >> ai_solution_summary.md
+            echo "---" >> ai_solution_summary.md
+            echo "✅ **Build Status**: Verified & compiled cleanly!" >> ai_solution_summary.md
             if [ -n "$PR_URL" ]; then
               echo "🔗 **Pull Request**: ${PR_URL}" >> ai_solution_summary.md
             fi
