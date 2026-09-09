@@ -22,7 +22,7 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.7 Released!
+> ### 🚀 Version 13.8.8 Released!
 > AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS Dot Matrix** mode with authentic hardware button styling, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---
@@ -92,7 +92,7 @@
 | Package | Format | Compatibility | Download |
 | :--- | :--- | :--- | :--- |
 | **AuraMusic Universal** | `.apk` | Android 8.0+ (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [⬇️ Download AuraMusic.apk](https://github.com/iammrwrath/AuraMusic/releases/latest/download/AuraMusic.apk) |
-| **AuraMusic v13.8.7** | `.apk` | Specific Release Version | [⬇️ Download v13.8.7](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.7/AuraMusic-v13.8.7.apk) |
+| **AuraMusic v13.8.8** | `.apk` | Specific Release Version | [⬇️ Download v13.8.8](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.8/AuraMusic-v13.8.8.apk) |
 
 <br/>
 
