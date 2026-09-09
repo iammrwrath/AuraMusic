@@ -25,8 +25,13 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.rememberDynamicColorScheme
 import com.materialkolor.score.Score
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
+
 val DefaultThemeColor = Color(0xFFED5564)
 val NothingThemeColor = Color(0xFFD71921)
+
+val LocalNothingTheme = staticCompositionLocalOf { false }
 
 @Composable
 fun MetrolistTheme(
@@ -84,11 +89,15 @@ fun MetrolistTheme(
 
     val typography = if (nothingTheme) NothingTypography else MaterialTheme.typography
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-        content = content,
-    )
+    CompositionLocalProvider(
+        LocalNothingTheme provides nothingTheme,
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            content = content,
+        )
+    }
 }
 
 fun Bitmap.extractThemeColor(): Color = Color(

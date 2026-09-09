@@ -10,8 +10,10 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -907,6 +909,8 @@ private fun AutoPlaylistHeader(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val isNothing = LocalNothingTheme.current
+
         // Action Buttons Row
         Row(
             modifier =
@@ -927,7 +931,8 @@ private fun AutoPlaylistHeader(
                     )
                 },
                 shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = if (isNothing) Color(0xFF141414) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isNothing) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null,
                 modifier = Modifier.size(48.dp),
             ) {
                 Box(
@@ -937,6 +942,7 @@ private fun AutoPlaylistHeader(
                     Icon(
                         painter = painterResource(R.drawable.shuffle),
                         contentDescription = stringResource(R.string.shuffle),
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
                 }
@@ -952,7 +958,8 @@ private fun AutoPlaylistHeader(
                         ),
                     )
                 },
-                color = MaterialTheme.colorScheme.primary,
+                color = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primary,
+                border = if (isNothing) BorderStroke(2.dp, Color(0xFFD71921)) else null,
                 shape = androidx.compose.foundation.shape.CircleShape,
                 modifier = Modifier.size(72.dp),
             ) {
@@ -963,7 +970,7 @@ private fun AutoPlaylistHeader(
                     Icon(
                         painter = painterResource(R.drawable.play),
                         contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(32.dp),
                     )
                 }
@@ -1009,7 +1016,8 @@ private fun AutoPlaylistHeader(
                     }
                 },
                 shape = androidx.compose.foundation.shape.CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = if (isNothing) Color(0xFF141414) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isNothing) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null,
                 modifier = Modifier.size(48.dp),
             ) {
                 Box(
@@ -1019,6 +1027,7 @@ private fun AutoPlaylistHeader(
                     Icon(
                         painter = painterResource(R.drawable.more_vert),
                         contentDescription = null,
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
                 }

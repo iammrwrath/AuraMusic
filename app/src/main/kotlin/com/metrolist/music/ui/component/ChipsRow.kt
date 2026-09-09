@@ -17,6 +17,7 @@ import androidx.compose.animation.shrinkOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,6 +55,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
+import com.metrolist.music.ui.theme.LocalNothingTheme
+import com.metrolist.music.ui.theme.ndotFontFamily
 
 @Composable
 fun <E> ChipsRow(
@@ -63,6 +66,8 @@ fun <E> ChipsRow(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
 ) {
+    val isNothing = LocalNothingTheme.current
+
     Row(
         modifier =
         modifier
@@ -73,15 +78,27 @@ fun <E> ChipsRow(
         Spacer(Modifier.width(12.dp))
 
         chips.forEach { (value, label) ->
+            val selected = currentValue == value
             FilterChip(
-                label = { Text(label) },
-                selected = currentValue == value,
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = containerColor,
-                ),
+                label = { Text(label, fontFamily = if (isNothing) ndotFontFamily else null) },
+                selected = selected,
+                colors = if (isNothing) {
+                    FilterChipDefaults.filterChipColors(
+                        containerColor = Color(0xFF141414),
+                        labelColor = Color.White,
+                        selectedContainerColor = Color(0xFFD71921).copy(alpha = 0.15f),
+                        selectedLabelColor = Color(0xFFD71921),
+                    )
+                } else {
+                    FilterChipDefaults.filterChipColors(
+                        containerColor = containerColor,
+                    )
+                },
                 onClick = { onValueUpdate(value) },
-                shape = RoundedCornerShape(16.dp),
-                border = null
+                shape = if (isNothing) RoundedCornerShape(20.dp) else RoundedCornerShape(16.dp),
+                border = if (isNothing) {
+                    BorderStroke(1.dp, if (selected) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f))
+                } else null
             )
 
             Spacer(Modifier.width(8.dp))
@@ -101,6 +118,7 @@ fun <Int> ChoiceChipsRow(
     modifier: Modifier = Modifier,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
 ) {
+    val isNothing = LocalNothingTheme.current
     var expandIconDegree by remember { mutableFloatStateOf(0f) }
     val rotationAnimation by animateFloatAsState(
         targetValue = expandIconDegree,
@@ -132,6 +150,7 @@ fun <Int> ChoiceChipsRow(
                             OptionStats.YEARS -> stringResource(id = R.string.years)
                             OptionStats.CONTINUOUS -> stringResource(id = R.string.continuous)
                         },
+                        fontFamily = if (isNothing) ndotFontFamily else null,
                     )
                 },
                 trailingIcon = {
@@ -139,13 +158,14 @@ fun <Int> ChoiceChipsRow(
                         painter = painterResource(R.drawable.expand_more),
                         contentDescription = null,
                         modifier = Modifier.graphicsLayer(rotationZ = rotationAnimation),
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurface,
                     )
                 },
-                shape = RoundedCornerShape(16.dp),
-                border = null,
+                shape = if (isNothing) RoundedCornerShape(20.dp) else RoundedCornerShape(16.dp),
+                border = if (isNothing) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null,
                 colors = AssistChipDefaults.assistChipColors(
-                    containerColor = containerColor,
-                    labelColor = MaterialTheme.colorScheme.onSurface
+                    containerColor = if (isNothing) Color(0xFF141414) else containerColor,
+                    labelColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurface
                 )
             )
 
@@ -164,7 +184,7 @@ fun <Int> ChoiceChipsRow(
                 ) {
                     options.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(text = option.second) },
+                            text = { Text(text = option.second, fontFamily = if (isNothing) ndotFontFamily else null) },
                             onClick = {
                                 onSelectionChange(option.first)
                                 expandIconDegree -= 180
@@ -190,16 +210,27 @@ fun <Int> ChoiceChipsRow(
             ) {
                 chips.forEach { (value, label) ->
                     Spacer(Modifier.width(8.dp))
-
+                    val selected = currentValue == value
                     FilterChip(
-                        label = { Text(label) },
-                        selected = currentValue == value,
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = containerColor,
-                        ),
+                        label = { Text(label, fontFamily = if (isNothing) ndotFontFamily else null) },
+                        selected = selected,
+                        colors = if (isNothing) {
+                            FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFF141414),
+                                labelColor = Color.White,
+                                selectedContainerColor = Color(0xFFD71921).copy(alpha = 0.15f),
+                                selectedLabelColor = Color(0xFFD71921),
+                            )
+                        } else {
+                            FilterChipDefaults.filterChipColors(
+                                containerColor = containerColor,
+                            )
+                        },
                         onClick = { onValueUpdate(value) },
-                        shape = RoundedCornerShape(16.dp),
-                        border = null
+                        shape = if (isNothing) RoundedCornerShape(20.dp) else RoundedCornerShape(16.dp),
+                        border = if (isNothing) {
+                            BorderStroke(1.dp, if (selected) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f))
+                        } else null
                     )
                 }
             }

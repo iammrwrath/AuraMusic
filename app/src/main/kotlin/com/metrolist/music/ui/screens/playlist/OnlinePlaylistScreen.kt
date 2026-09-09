@@ -6,8 +6,10 @@
 package com.metrolist.music.ui.screens.playlist
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -612,6 +614,8 @@ private fun OnlinePlaylistHeader(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        val isNothing = LocalNothingTheme.current
+
         Row(
             modifier =
                 Modifier
@@ -620,6 +624,7 @@ private fun OnlinePlaylistHeader(
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val isLiked = dbPlaylist?.playlist?.bookmarkedAt != null
             // Like Button - Smaller secondary button
             Surface(
                 onClick = {
@@ -659,7 +664,8 @@ private fun OnlinePlaylistHeader(
                     }
                 },
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = if (isNothing) (if (isLiked) Color(0xFFD71921).copy(alpha = 0.15f) else Color(0xFF141414)) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isNothing) BorderStroke(1.dp, if (isLiked) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)) else null,
                 modifier = Modifier.size(48.dp),
             ) {
                 Box(
@@ -669,14 +675,18 @@ private fun OnlinePlaylistHeader(
                     Icon(
                         painter =
                             painterResource(
-                                if (dbPlaylist?.playlist?.bookmarkedAt != null) R.drawable.favorite else R.drawable.favorite_border,
+                                if (isLiked) R.drawable.favorite else R.drawable.favorite_border,
                             ),
                         contentDescription = null,
                         tint =
-                            if (dbPlaylist?.playlist?.bookmarkedAt != null) {
-                                MaterialTheme.colorScheme.error
+                            if (isNothing) {
+                                if (isLiked) Color(0xFFD71921) else Color.White
                             } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
+                                if (isLiked) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             },
                         modifier = Modifier.size(24.dp),
                     )
@@ -697,7 +707,8 @@ private fun OnlinePlaylistHeader(
                         )
                     }
                 },
-                color = MaterialTheme.colorScheme.primary,
+                color = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primary,
+                border = if (isNothing) BorderStroke(2.dp, Color(0xFFD71921)) else null,
                 shape = CircleShape,
                 modifier = Modifier.size(72.dp),
             ) {
@@ -708,7 +719,7 @@ private fun OnlinePlaylistHeader(
                     Icon(
                         painter = painterResource(R.drawable.play),
                         contentDescription = stringResource(R.string.play),
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(32.dp),
                     )
                 }
@@ -727,7 +738,8 @@ private fun OnlinePlaylistHeader(
                     }
                 },
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = if (isNothing) Color(0xFF141414) else MaterialTheme.colorScheme.surfaceVariant,
+                border = if (isNothing) BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)) else null,
                 modifier = Modifier.size(48.dp),
             ) {
                 Box(
@@ -737,6 +749,7 @@ private fun OnlinePlaylistHeader(
                     Icon(
                         painter = painterResource(R.drawable.more_vert),
                         contentDescription = null,
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(24.dp),
                     )
                 }

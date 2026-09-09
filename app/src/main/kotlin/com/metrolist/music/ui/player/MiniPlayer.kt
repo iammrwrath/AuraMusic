@@ -122,6 +122,7 @@ import coil3.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.metrolist.music.ui.theme.PlayerColorExtractor
+import com.metrolist.music.ui.theme.LocalNothingTheme
 
 /**
  * Stable wrapper for progress state - reads values only during draw phase
@@ -512,8 +513,10 @@ private fun NewMiniPlayerPlayButton(
     val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+    val isNothing = LocalNothingTheme.current
 
-    val trackColor = outlineColor.copy(alpha = 0.2f)
+    val effectivePrimaryColor = if (isNothing) Color(0xFFD71921) else primaryColor
+    val trackColor = if (isNothing) Color(0xFF222222) else outlineColor.copy(alpha = 0.2f)
     val strokeWidth = 3.dp
 
     Box(
@@ -543,7 +546,7 @@ private fun NewMiniPlayerPlayButton(
                     )
                     // Draw progress
                     drawArc(
-                        color = primaryColor,
+                        color = effectivePrimaryColor,
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
                         useCenter = false,
@@ -560,7 +563,11 @@ private fun NewMiniPlayerPlayButton(
                 Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .border(1.dp, outlineColor.copy(alpha = 0.3f), CircleShape)
+                    .border(
+                        1.dp,
+                        if (isNothing) Color.White.copy(alpha = 0.22f) else outlineColor.copy(alpha = 0.3f),
+                        CircleShape,
+                    )
                     .clickable {
                         if (isListenTogetherGuest) {
                             playerConnection.toggleMute()
@@ -736,8 +743,9 @@ private fun LegacyMiniPlayer(
             (600 / (1f + kotlin.math.exp(-(-11.44748 * swipeSensitivity + 9.04945)))).roundToInt()
         }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val isNothing = LocalNothingTheme.current
+    val primaryColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primary
+    val trackColor = if (isNothing) Color(0xFF222222) else MaterialTheme.colorScheme.surfaceVariant
 
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -857,11 +865,22 @@ private fun LegacyMiniPlayer(
                 listenTogetherManager = listenTogetherManager,
             )
 
+            val isNothing = LocalNothingTheme.current
             IconButton(
                 enabled = canSkipNext && !isListenTogetherGuest,
                 onClick = if (isListenTogetherGuest) ({}) else ({ playerConnection.seekToNext() }),
+                modifier = if (isNothing) Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF141414))
+                    .border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape)
+                else Modifier,
             ) {
-                Icon(painter = painterResource(R.drawable.skip_next), contentDescription = null)
+                Icon(
+                    painter = painterResource(R.drawable.skip_next),
+                    contentDescription = null,
+                    tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
@@ -903,6 +922,7 @@ private fun LegacyPlayPauseButton(
     val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
     val isListenTogetherGuest = listenTogetherManager?.let { it.isInRoom && !it.isHost } ?: false
     val isMuted by playerConnection.isMuted.collectAsStateWithLifecycle()
+    val isNothing = LocalNothingTheme.current
 
     IconButton(
         onClick = {
@@ -919,6 +939,12 @@ private fun LegacyPlayPauseButton(
                 playerConnection.togglePlayPause()
             }
         },
+        modifier = if (isNothing) Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(if (effectiveIsPlaying) Color(0xFFD71921) else Color(0xFF141414))
+            .border(1.dp, Color(0xFFD71921), CircleShape)
+        else Modifier,
     ) {
         Icon(
             painter =
@@ -931,6 +957,7 @@ private fun LegacyPlayPauseButton(
                     },
                 ),
             contentDescription = null,
+            tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSurface,
         )
     }
 }
@@ -1039,7 +1066,7 @@ private fun SubscribeButton(
     val database = LocalDatabase.current
     val libraryArtist by database.artist(artistId).collectAsStateWithLifecycle(initialValue = null)
     val isSubscribed = libraryArtist?.artist?.bookmarkedAt != null
-
+    val isNothing = LocalNothingTheme.current
 
     Box(
         contentAlignment = Alignment.Center,
@@ -1049,10 +1076,10 @@ private fun SubscribeButton(
                 .clip(CircleShape)
                 .border(
                     width = 1.dp,
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
+                    color = if (isNothing) (if (isSubscribed) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)) else (if (isSubscribed) primaryColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f)),
                     shape = CircleShape,
                 ).background(
-                    color = if (isSubscribed) primaryColor.copy(alpha = 0.1f) else Color.Transparent,
+                    color = if (isNothing) (if (isSubscribed) Color(0xFFD71921).copy(alpha = 0.15f) else Color(0xFF141414)) else (if (isSubscribed) primaryColor.copy(alpha = 0.1f) else Color.Transparent),
                     shape = CircleShape,
                 ).clickable {
                     database.transaction {
@@ -1077,7 +1104,7 @@ private fun SubscribeButton(
         Icon(
             painter = painterResource(if (isSubscribed) R.drawable.subscribed else R.drawable.subscribe),
             contentDescription = null,
-            tint = if (isSubscribed) primaryColor else onSurfaceColor.copy(alpha = 0.7f),
+            tint = if (isNothing) (if (isSubscribed) Color(0xFFD71921) else Color.White) else (if (isSubscribed) primaryColor else onSurfaceColor.copy(alpha = 0.7f)),
             modifier = Modifier.size(20.dp),
         )
     }
@@ -1096,6 +1123,7 @@ private fun FavoriteButton(
     // For episodes, show saved state (inLibrary); for songs, show liked state
     val isEpisode = librarySong?.song?.isEpisode == true
     val isLiked = if (isEpisode) librarySong?.song?.inLibrary != null else librarySong?.song?.liked == true
+    val isNothing = LocalNothingTheme.current
 
     Box(
         contentAlignment = Alignment.Center,
@@ -1105,17 +1133,17 @@ private fun FavoriteButton(
                 .clip(CircleShape)
                 .border(
                     width = 1.dp,
-                    color = if (isLiked) errorColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f),
+                    color = if (isNothing) (if (isLiked) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)) else (if (isLiked) errorColor.copy(alpha = 0.5f) else outlineColor.copy(alpha = 0.3f)),
                     shape = CircleShape,
                 ).background(
-                    color = if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent,
+                    color = if (isNothing) (if (isLiked) Color(0xFFD71921).copy(alpha = 0.15f) else Color(0xFF141414)) else (if (isLiked) errorColor.copy(alpha = 0.1f) else Color.Transparent),
                     shape = CircleShape,
                 ).clickable { playerConnection.service.toggleLike() },
     ) {
         Icon(
             painter = painterResource(if (isLiked) R.drawable.favorite else R.drawable.favorite_border),
             contentDescription = null,
-            tint = if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f),
+            tint = if (isNothing) (if (isLiked) Color(0xFFD71921) else Color.White) else (if (isLiked) errorColor else onSurfaceColor.copy(alpha = 0.7f)),
             modifier = Modifier.size(20.dp),
         )
     }

@@ -22,8 +22,8 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.6 Released!
-> AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS Dot Matrix** mode, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
+> ### 🚀 Version 13.8.7 Released!
+> AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS Dot Matrix** mode with authentic hardware button styling, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---
 
@@ -32,6 +32,7 @@
 ### 🔴 Nothing OS (Dot Matrix) Mode
 * **Authentic NDot Typography**: Custom-rendered NDot 57 matrix fonts across headers, song titles, timestamps, and metadata.
 * **Signature Nothing Red (`#D71921`)**: Striking high-contrast accenting set against pure OLED black backgrounds.
+* **Hardware-Inspired Button Styling**: Sleek dark charcoal containers (`#141414`), crisp 1dp/1.5dp wireframe outline borders, live recording dot indicator, and Nothing Red controls across the player, miniplayer, chips, and playlist screens.
 * **Retro-Futuristic Player**: Specialized dot-matrix Now Playing layout with animated audio indicators.
 * **Toggle with 1 Tap**: Seamlessly switch between Material You dynamic theming and Nothing OS Dot Matrix mode in Appearance Settings.
 
@@ -91,7 +92,7 @@
 | Package | Format | Compatibility | Download |
 | :--- | :--- | :--- | :--- |
 | **AuraMusic Universal** | `.apk` | Android 8.0+ (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [⬇️ Download AuraMusic.apk](https://github.com/iammrwrath/AuraMusic/releases/latest/download/AuraMusic.apk) |
-| **AuraMusic v13.8.6** | `.apk` | Specific Release Version | [⬇️ Download v13.8.6](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.6/AuraMusic-v13.8.6.apk) |
+| **AuraMusic v13.8.7** | `.apk` | Specific Release Version | [⬇️ Download v13.8.7](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.7/AuraMusic-v13.8.7.apk) |
 
 <br/>
 

@@ -55,7 +55,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.metrolist.music.ui.theme.LocalNothingTheme
+import com.metrolist.music.ui.theme.ndotFontFamily
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -242,6 +247,7 @@ fun BottomSheetPlayer(
         key = PlayerButtonsStyleKey,
         defaultValue = PlayerButtonsStyle.DEFAULT,
     )
+    val isNothing = LocalNothingTheme.current
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
     val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
@@ -1151,13 +1157,20 @@ fun BottomSheetPlayer(
                             if (showLyrics) {
                                 FilledIconButton(
                                     onClick = { isFullScreen = !isFullScreen },
-                                    shape = shareShape,
+                                    shape = if (isNothing) CircleShape else shareShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
+                                            containerColor = if (isNothing) Color(0xFF141414) else textButtonColor,
+                                            contentColor = if (isNothing) Color.White else iconButtonColor,
                                         ),
-                                    modifier = Modifier.size(42.dp),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        ),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.fullscreen),
@@ -1179,13 +1192,20 @@ fun BottomSheetPlayer(
                                             }
                                         context.startActivity(Intent.createChooser(intent, null))
                                     },
-                                    shape = shareShape,
+                                    shape = if (isNothing) CircleShape else shareShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
+                                            containerColor = if (isNothing) Color(0xFF141414) else textButtonColor,
+                                            contentColor = if (isNothing) Color.White else iconButtonColor,
                                         ),
-                                    modifier = Modifier.size(42.dp),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        ),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.share),
@@ -1217,13 +1237,20 @@ fun BottomSheetPlayer(
                                             )
                                         }
                                     },
-                                    shape = favShape,
+                                    shape = if (isNothing) CircleShape else favShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
+                                            containerColor = if (isNothing) Color(0xFF141414) else textButtonColor,
+                                            contentColor = if (isNothing) Color.White else iconButtonColor,
                                         ),
-                                    modifier = Modifier.size(42.dp),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        ),
                                 ) {
                                     Icon(
                                         painter = painterResource(R.drawable.more_horiz),
@@ -1237,13 +1264,20 @@ fun BottomSheetPlayer(
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
                                 FilledIconButton(
                                     onClick = playerConnection::toggleLike,
-                                    shape = favShape,
+                                    shape = if (isNothing) CircleShape else favShape,
                                     colors =
                                         IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = textButtonColor,
-                                            contentColor = iconButtonColor,
+                                            containerColor = if (isNothing) Color(0xFF141414) else textButtonColor,
+                                            contentColor = if (isNothing) (if (isFavorite) Color(0xFFD71921) else Color.White) else iconButtonColor,
                                         ),
-                                    modifier = Modifier.size(42.dp),
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, if (isFavorite) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        ),
                                 ) {
                                     Icon(
                                         painter =
@@ -1267,15 +1301,21 @@ fun BottomSheetPlayer(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                        .background(textButtonColor)
+                                        .size(if (isNothing) 42.dp else 40.dp)
+                                        .clip(if (isNothing) CircleShape else RoundedCornerShape(24.dp))
+                                        .background(if (isNothing) Color(0xFF141414) else textButtonColor)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        )
                                         .clickable { isFullScreen = !isFullScreen },
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.fullscreen),
                                     contentDescription = null,
-                                    tint = iconButtonColor,
+                                    tint = if (isNothing) Color.White else iconButtonColor,
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
@@ -1286,9 +1326,15 @@ fun BottomSheetPlayer(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                        .background(textButtonColor)
+                                        .size(if (isNothing) 42.dp else 40.dp)
+                                        .clip(if (isNothing) CircleShape else RoundedCornerShape(24.dp))
+                                        .background(if (isNothing) Color(0xFF141414) else textButtonColor)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        )
                                         .clickable {
                                             val intent =
                                                 Intent().apply {
@@ -1305,7 +1351,7 @@ fun BottomSheetPlayer(
                                 Icon(
                                     painter = painterResource(R.drawable.share),
                                     contentDescription = null,
-                                    tint = iconButtonColor,
+                                    tint = if (isNothing) Color.White else iconButtonColor,
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
@@ -1323,9 +1369,15 @@ fun BottomSheetPlayer(
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(24.dp))
-                                        .background(textButtonColor)
+                                        .size(if (isNothing) 42.dp else 40.dp)
+                                        .clip(if (isNothing) CircleShape else RoundedCornerShape(24.dp))
+                                        .background(if (isNothing) Color(0xFF141414) else textButtonColor)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        )
                                         .clickable {
                                             menuState.show {
                                                 com.metrolist.music.ui.menu.LyricsMenu(
@@ -1347,7 +1399,7 @@ fun BottomSheetPlayer(
                                 Icon(
                                     painter = painterResource(R.drawable.more_horiz),
                                     contentDescription = null,
-                                    tint = iconButtonColor,
+                                    tint = if (isNothing) Color.White else iconButtonColor,
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
@@ -1496,7 +1548,7 @@ fun BottomSheetPlayer(
             ) {
                 Text(
                     text = makeTimeString(sliderPosition ?: effectivePosition),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = ndotFontFamily) else MaterialTheme.typography.labelMedium,
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1504,7 +1556,7 @@ fun BottomSheetPlayer(
 
                 Text(
                     text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = ndotFontFamily) else MaterialTheme.typography.labelMedium,
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1594,13 +1646,19 @@ fun BottomSheetPlayer(
                                 interactionSource = backInteractionSource,
                                 colors =
                                     IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
-                                        contentColor = sideButtonContentColor,
+                                        containerColor = if (isNothing) Color(0xFF141414) else sideButtonContainerColor,
+                                        contentColor = if (isNothing) Color.White else sideButtonContentColor,
                                     ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(backButtonWeight),
+                                        .weight(backButtonWeight)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                RoundedCornerShape(50),
+                                            ) else Modifier
+                                        ),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_previous),
@@ -1634,19 +1692,34 @@ fun BottomSheetPlayer(
                                 interactionSource = playPauseInteractionSource,
                                 colors =
                                     IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = textButtonColor,
-                                        contentColor = iconButtonColor,
+                                        containerColor = if (isNothing) (if (effectiveIsPlaying) Color(0xFFD71921) else Color(0xFF141414)) else textButtonColor,
+                                        contentColor = if (isNothing) Color.White else iconButtonColor,
                                     ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
                                         .weight(playPauseWeight)
-                                        .focusRequester(focusRequester),
+                                        .focusRequester(focusRequester)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.5.dp, Color(0xFFD71921)),
+                                                RoundedCornerShape(50),
+                                            ) else Modifier
+                                        ),
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center,
                                 ) {
+                                    if (isNothing) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(8.dp)
+                                                .clip(CircleShape)
+                                                .background(if (effectiveIsPlaying) Color.White else Color(0xFFD71921))
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
                                     Icon(
                                         painter =
                                             painterResource(
@@ -1662,17 +1735,20 @@ fun BottomSheetPlayer(
                                             } else {
                                                 if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
                                             },
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(if (isNothing) 26.dp else 32.dp),
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text =
                                             if (isListenTogetherGuest) {
-                                                if (isMuted) stringResource(R.string.unmute) else stringResource(R.string.mute)
+                                                if (isMuted) stringResource(R.string.unmute).let { if (isNothing) it.uppercase() else it } else stringResource(R.string.mute).let { if (isNothing) it.uppercase() else it }
                                             } else {
-                                                if (effectiveIsPlaying) stringResource(R.string.pause) else stringResource(R.string.play)
+                                                if (effectiveIsPlaying) stringResource(R.string.pause).let { if (isNothing) it.uppercase() else it } else stringResource(R.string.play).let { if (isNothing) it.uppercase() else it }
                                             },
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = if (isNothing) MaterialTheme.typography.titleMedium.copy(
+                                            fontFamily = ndotFontFamily,
+                                            letterSpacing = 2.sp,
+                                        ) else MaterialTheme.typography.titleMedium,
                                     )
                                 }
                             }
@@ -1686,13 +1762,19 @@ fun BottomSheetPlayer(
                                 interactionSource = nextInteractionSource,
                                 colors =
                                     IconButtonDefaults.filledIconButtonColors(
-                                        containerColor = sideButtonContainerColor,
-                                        contentColor = sideButtonContentColor,
+                                        containerColor = if (isNothing) Color(0xFF141414) else sideButtonContainerColor,
+                                        contentColor = if (isNothing) Color.White else sideButtonContentColor,
                                     ),
                                 modifier =
                                     Modifier
                                         .height(68.dp)
-                                        .weight(nextButtonWeight),
+                                        .weight(nextButtonWeight)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                RoundedCornerShape(50),
+                                            ) else Modifier
+                                        ),
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.skip_next),
@@ -1710,41 +1792,76 @@ fun BottomSheetPlayer(
                                     .padding(horizontal = PlayerHorizontalPadding),
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
-                                ResizableIconButton(
-                                    icon =
-                                        when (repeatMode) {
-                                            Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ALL -> R.drawable.repeat
-                                            Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
-                                            else -> throw IllegalStateException()
+                                val isRepeatActive = repeatMode != Player.REPEAT_MODE_OFF
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .align(Alignment.Center)
+                                        .then(
+                                            if (isNothing) Modifier
+                                                .clip(CircleShape)
+                                                .background(if (isRepeatActive) Color(0xFFD71921).copy(alpha = 0.15f) else Color(0xFF141414))
+                                                .border(
+                                                    BorderStroke(1.dp, if (isRepeatActive) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)),
+                                                    CircleShape,
+                                                )
+                                            else Modifier
+                                        ),
+                                ) {
+                                    ResizableIconButton(
+                                        icon =
+                                            when (repeatMode) {
+                                                Player.REPEAT_MODE_OFF, Player.REPEAT_MODE_ALL -> R.drawable.repeat
+                                                Player.REPEAT_MODE_ONE -> R.drawable.repeat_one
+                                                else -> throw IllegalStateException()
+                                            },
+                                        color = if (isNothing) (if (isRepeatActive) Color(0xFFD71921) else Color.White) else TextBackgroundColor,
+                                        modifier =
+                                            Modifier
+                                                .size(if (isNothing) 26.dp else 32.dp)
+                                                .padding(if (isNothing) 0.dp else 4.dp)
+                                                .align(Alignment.Center)
+                                                .alpha(
+                                                    if (isListenTogetherGuest || repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f,
+                                                ),
+                                        enabled = !isListenTogetherGuest,
+                                        onClick = {
+                                            playerConnection.player.toggleRepeatMode()
                                         },
-                                    color = TextBackgroundColor,
-                                    modifier =
-                                        Modifier
-                                            .size(32.dp)
-                                            .padding(4.dp)
-                                            .align(Alignment.Center)
-                                            .alpha(
-                                                if (isListenTogetherGuest || repeatMode == Player.REPEAT_MODE_OFF) 0.5f else 1f,
-                                            ),
-                                    enabled = !isListenTogetherGuest,
-                                    onClick = {
-                                        playerConnection.player.toggleRepeatMode()
-                                    },
-                                )
+                                    )
+                                }
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
-                                ResizableIconButton(
-                                    icon = R.drawable.skip_previous,
-                                    enabled = canSkipPrevious && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
-                                    modifier =
-                                        Modifier
-                                            .size(32.dp)
-                                            .align(Alignment.Center)
-                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f),
-                                    onClick = playerConnection::seekToPrevious,
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .align(Alignment.Center)
+                                        .then(
+                                            if (isNothing) Modifier
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF141414))
+                                                .border(
+                                                    BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                    CircleShape,
+                                                )
+                                            else Modifier
+                                        ),
+                                ) {
+                                    ResizableIconButton(
+                                        icon = R.drawable.skip_previous,
+                                        enabled = canSkipPrevious && !isListenTogetherGuest,
+                                        color = if (isNothing) Color.White else TextBackgroundColor,
+                                        modifier =
+                                            Modifier
+                                                .size(if (isNothing) 26.dp else 32.dp)
+                                                .align(Alignment.Center)
+                                                .alpha(if (isListenTogetherGuest) 0.5f else 1f),
+                                        onClick = playerConnection::seekToPrevious,
+                                    )
+                                }
                             }
 
                             Spacer(Modifier.width(8.dp))
@@ -1753,8 +1870,14 @@ fun BottomSheetPlayer(
                                 modifier =
                                     Modifier
                                         .size(72.dp)
-                                        .clip(RoundedCornerShape(playPauseRoundness))
-                                        .background(textButtonColor)
+                                        .clip(if (isNothing) CircleShape else RoundedCornerShape(playPauseRoundness))
+                                        .background(if (isNothing) (if (effectiveIsPlaying) Color(0xFFD71921) else Color(0xFF141414)) else textButtonColor)
+                                        .then(
+                                            if (isNothing) Modifier.border(
+                                                BorderStroke(2.dp, Color(0xFFD71921)),
+                                                CircleShape,
+                                            ) else Modifier
+                                        )
                                         .clickable {
                                             if (isListenTogetherGuest) {
                                                 playerConnection.toggleMute()
@@ -1791,7 +1914,7 @@ fun BottomSheetPlayer(
                                             },
                                         ),
                                     contentDescription = null,
-                                    colorFilter = ColorFilter.tint(iconButtonColor),
+                                    colorFilter = ColorFilter.tint(if (isNothing) Color.White else iconButtonColor),
                                     modifier =
                                         Modifier
                                             .align(Alignment.Center)
@@ -1802,33 +1925,66 @@ fun BottomSheetPlayer(
                             Spacer(Modifier.width(8.dp))
 
                             Box(modifier = Modifier.weight(1f)) {
-                                ResizableIconButton(
-                                    icon = R.drawable.skip_next,
-                                    enabled = canSkipNext && !isListenTogetherGuest,
-                                    color = TextBackgroundColor,
-                                    modifier =
-                                        Modifier
-                                            .size(32.dp)
-                                            .align(Alignment.Center)
-                                            .alpha(if (isListenTogetherGuest) 0.5f else 1f),
-                                    onClick = playerConnection::seekToNext,
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .align(Alignment.Center)
+                                        .then(
+                                            if (isNothing) Modifier
+                                                .clip(CircleShape)
+                                                .background(Color(0xFF141414))
+                                                .border(
+                                                    BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                                                    CircleShape,
+                                                )
+                                            else Modifier
+                                        ),
+                                ) {
+                                    ResizableIconButton(
+                                        icon = R.drawable.skip_next,
+                                        enabled = canSkipNext && !isListenTogetherGuest,
+                                        color = if (isNothing) Color.White else TextBackgroundColor,
+                                        modifier =
+                                            Modifier
+                                                .size(if (isNothing) 26.dp else 32.dp)
+                                                .align(Alignment.Center)
+                                                .alpha(if (isListenTogetherGuest) 0.5f else 1f),
+                                        onClick = playerConnection::seekToNext,
+                                    )
+                                }
                             }
 
                             Box(modifier = Modifier.weight(1f)) {
-                                // For episodes, show saved state (inLibrary); for songs, show liked state
                                 val isEpisode = currentSong?.song?.isEpisode == true
                                 val isFavorite = if (isEpisode) currentSong?.song?.inLibrary != null else currentSong?.song?.liked == true
-                                ResizableIconButton(
-                                    icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
-                                    color = if (isFavorite) MaterialTheme.colorScheme.error else TextBackgroundColor,
-                                    modifier =
-                                        Modifier
-                                            .size(32.dp)
-                                            .padding(4.dp)
-                                            .align(Alignment.Center),
-                                    onClick = playerConnection::toggleLike,
-                                )
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .align(Alignment.Center)
+                                        .then(
+                                            if (isNothing) Modifier
+                                                .clip(CircleShape)
+                                                .background(if (isFavorite) Color(0xFFD71921).copy(alpha = 0.15f) else Color(0xFF141414))
+                                                .border(
+                                                    BorderStroke(1.dp, if (isFavorite) Color(0xFFD71921) else Color.White.copy(alpha = 0.22f)),
+                                                    CircleShape,
+                                                )
+                                            else Modifier
+                                        ),
+                                ) {
+                                    ResizableIconButton(
+                                        icon = if (isFavorite) R.drawable.favorite else R.drawable.favorite_border,
+                                        color = if (isFavorite) Color(0xFFD71921) else if (isNothing) Color.White else TextBackgroundColor,
+                                        modifier =
+                                            Modifier
+                                                .size(if (isNothing) 26.dp else 32.dp)
+                                                .padding(if (isNothing) 0.dp else 4.dp)
+                                                .align(Alignment.Center),
+                                        onClick = playerConnection::toggleLike,
+                                    )
+                                }
                             }
                         }
                     }
@@ -2144,14 +2300,21 @@ private fun PlayerMoreMenuButton(
     val navController = LocalNavController.current
     val menuState = LocalMenuState.current
     val bottomSheetPageState = LocalBottomSheetPageState.current
+    val isNothing = LocalNothingTheme.current
 
     Box(
         contentAlignment = Alignment.Center,
         modifier =
             Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(textButtonColor)
+                .size(if (isNothing) 42.dp else 40.dp)
+                .clip(if (isNothing) CircleShape else RoundedCornerShape(24.dp))
+                .background(if (isNothing) Color(0xFF141414) else textButtonColor)
+                .then(
+                    if (isNothing) Modifier.border(
+                        BorderStroke(1.dp, Color.White.copy(alpha = 0.22f)),
+                        CircleShape,
+                    ) else Modifier
+                )
                 .clickable {
                     menuState.show {
                         PlayerMenu(
@@ -2172,7 +2335,7 @@ private fun PlayerMoreMenuButton(
         Image(
             painter = painterResource(R.drawable.more_horiz),
             contentDescription = null,
-            colorFilter = ColorFilter.tint(iconButtonColor),
+            colorFilter = ColorFilter.tint(if (isNothing) Color.White else iconButtonColor),
         )
     }
 }
