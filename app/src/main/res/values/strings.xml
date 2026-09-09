@@ -375,4 +375,8 @@
     <string name="android_auto_lyrics_translation_desc">Display translation alongside original lyrics on car screen (Original • Translation)</string>
     <string name="car_lyrics_on">Lyrics: ON</string>
     <string name="car_lyrics_off">Lyrics: OFF</string>
+    <string name="volume_boost">Volume Boost (Preamp)</string>
+    <string name="volume_boost_desc">Amplifies audio output for car stereos, Android Auto, and quiet head units. Includes soft-knee anti-clipping limiter.</string>
+    <string name="volume_boost_disabled">Off (0.0 dB)</string>
+    <string name="volume_boost_db">+%1$.1f dB</string>
 </resources>

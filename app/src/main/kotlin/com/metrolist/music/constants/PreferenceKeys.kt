@@ -136,6 +136,8 @@ enum class LoudnessLevel(
     QUIET(-19f),
 }
 
+val VolumeBoostKey = floatPreferencesKey("volumeBoost")
+
 val AutoLoadMoreKey = booleanPreferencesKey("autoLoadMore")
 val AutoRadioQueueKey = booleanPreferencesKey("autoRadioQueue")
 val DisableLoadMoreWhenRepeatAllKey = booleanPreferencesKey("disableLoadMoreWhenRepeatAll")

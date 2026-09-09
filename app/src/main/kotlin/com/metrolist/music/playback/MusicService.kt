@@ -103,6 +103,7 @@ import com.metrolist.music.constants.AddToPlaylistPosition
 import com.metrolist.music.constants.AddToPlaylistPositionKey
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AudioNormalizationKey
+import com.metrolist.music.constants.VolumeBoostKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
@@ -461,6 +462,9 @@ class MusicService :
 
     @Volatile
     private var loudnessLevelCached: LoudnessLevel = LoudnessLevel.BALANCED
+
+    @Volatile
+    private var volumeBoostCached: Float = 0f
 
     private var cachedNormalizationGainMb: Int? = null
     private var cachedNormalizationEnabled: Boolean = false
@@ -958,6 +962,16 @@ class MusicService :
             setupAudioNormalization()
         }
 
+        dataStore.data
+            .map { it[VolumeBoostKey] ?: 0f }
+            .distinctUntilChanged()
+            .collectLatest(scope) { boostDb ->
+                volumeBoostCached = boostDb
+                playerNormalizationProcessors.values.forEach { processor ->
+                    processor.setVolumeBoost(boostDb)
+                }
+            }
+
         combine(
             dataStore.data.map { it[AudioOffload] ?: false },
             dataStore.data.map { it[CrossfadeEnabledKey] ?: false },
@@ -1353,6 +1367,7 @@ class MusicService :
     private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
         val normalizationProcessor = VolumeNormalizationAudioProcessor().also {
             it.enabled = cachedNormalizationEnabled
+            it.setVolumeBoost(volumeBoostCached)
             cachedNormalizationGainMb?.let { gain -> it.setTargetGain(gain) }
         }
         val eqProcessor = CustomEqualizerAudioProcessor()
@@ -2335,9 +2350,10 @@ class MusicService :
         val prefs = startupPrefs!!
         normalizationEnabledCached = prefs[AudioNormalizationKey] ?: true
         loudnessLevelCached = prefs[LoudnessLevelKey].toEnum(LoudnessLevel.BALANCED)
+        volumeBoostCached = prefs[VolumeBoostKey] ?: 0f
 
         Timber.tag(TAG).d(
-            "Seeded loudness cache: normalization=$normalizationEnabledCached, level=$loudnessLevelCached"
+            "Seeded loudness cache: normalization=$normalizationEnabledCached, level=$loudnessLevelCached, volumeBoost=$volumeBoostCached"
         )
     }
 
@@ -5302,7 +5318,7 @@ class MusicService :
 
         private const val INITIAL_BUFFER_RECOVERY_DELAY_MS = 15_000L
         private const val INITIAL_BUFFER_RECOVERY_POSITION_MS = 5_000L
-        private const val MAX_GAIN_MB = 300 // Maximum gain in millibels (3 dB)
+        private const val MAX_GAIN_MB = 1500 // Maximum gain in millibels (15 dB)
         private const val MIN_GAIN_MB = -1500 // Minimum gain in millibels (-15 dB)
 
         private const val TAG = "MusicService"

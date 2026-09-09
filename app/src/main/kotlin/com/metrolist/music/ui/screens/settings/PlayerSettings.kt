@@ -37,6 +37,7 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AudioNormalizationKey
+import com.metrolist.music.constants.VolumeBoostKey
 import com.metrolist.music.constants.AudioOffload
 import com.metrolist.music.constants.AudioTrackPlaybackParamsKey
 import com.metrolist.music.constants.AudioQuality
@@ -148,6 +149,11 @@ fun PlayerSettings(
     val (loudnessLevel, onLoudnessLevelChange) = rememberEnumPreference(
         LoudnessLevelKey,
         defaultValue = LoudnessLevel.BALANCED,
+    )
+
+    val (volumeBoost, onVolumeBoostChange) = rememberPreference(
+        VolumeBoostKey,
+        defaultValue = 0f,
     )
 
     val (audioOffload, onAudioOffloadChange) = rememberPreference(
@@ -521,6 +527,29 @@ fun PlayerSettings(
                         onClick = { showLoudnessLevelDialog = true }
                     ))
                 }
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.volume_up),
+                    title = { Text(stringResource(R.string.volume_boost)) },
+                    description = {
+                        Column {
+                            Text(stringResource(R.string.volume_boost_desc))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (volumeBoost == 0f) {
+                                    stringResource(R.string.volume_boost_disabled)
+                                } else {
+                                    stringResource(R.string.volume_boost_db, volumeBoost)
+                                }
+                            )
+                            Slider(
+                                value = volumeBoost,
+                                onValueChange = onVolumeBoostChange,
+                                valueRange = 0f..15f,
+                                steps = 14
+                            )
+                        }
+                    }
+                ))
                 val isTransitionActive = automixMode != AutomixMode.OFF || crossfadeEnabled
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.graphic_eq),

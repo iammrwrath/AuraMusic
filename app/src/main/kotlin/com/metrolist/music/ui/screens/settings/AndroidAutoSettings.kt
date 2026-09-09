@@ -51,6 +51,7 @@ import com.metrolist.music.constants.AndroidAutoSearchLocalLimitKey
 import com.metrolist.music.constants.AndroidAutoSectionsOrderKey
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AndroidAutoYouTubePlaylistsKey
+import com.metrolist.music.constants.VolumeBoostKey
 import com.metrolist.music.constants.MediaSessionConstants
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
@@ -132,6 +133,10 @@ fun AndroidAutoSettings(
     val (androidAutoLyricsTranslation, onAndroidAutoLyricsTranslationChange) = rememberPreference(
         key = AndroidAutoLyricsTranslationKey,
         defaultValue = true
+    )
+    val (volumeBoost, onVolumeBoostChange) = rememberPreference(
+        key = VolumeBoostKey,
+        defaultValue = 0f,
     )
 
     var sections by remember(sectionsRaw) {
@@ -426,6 +431,38 @@ fun AndroidAutoSettings(
                     onClick = {
                         if (androidAutoLyrics) {
                             onAndroidAutoLyricsTranslationChange(!androidAutoLyricsTranslation)
+                        }
+                    }
+                )
+            )
+        )
+
+        Spacer(Modifier.height(27.dp))
+
+        // Audio & Volume Boost
+        Material3SettingsGroup(
+            title = stringResource(R.string.volume_boost),
+            items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.volume_up),
+                    title = { Text(stringResource(R.string.volume_boost)) },
+                    description = {
+                        Column {
+                            Text(stringResource(R.string.volume_boost_desc))
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                if (volumeBoost == 0f) {
+                                    stringResource(R.string.volume_boost_disabled)
+                                } else {
+                                    stringResource(R.string.volume_boost_db, volumeBoost)
+                                }
+                            )
+                            Slider(
+                                value = volumeBoost,
+                                onValueChange = onVolumeBoostChange,
+                                valueRange = 0f..15f,
+                                steps = 14
+                            )
                         }
                     }
                 )
