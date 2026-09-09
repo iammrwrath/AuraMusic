@@ -160,6 +160,7 @@ enum class AutomixMode {
 val AutomixModeKey = stringPreferencesKey("automixMode")
 val AutomixBassSwapKey = booleanPreferencesKey("automixBassSwap")
 val AndroidAutoLyricsKey = booleanPreferencesKey("androidAutoLyrics")
+val AndroidAutoLyricsTranslationKey = booleanPreferencesKey("androidAutoLyricsTranslation")
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")

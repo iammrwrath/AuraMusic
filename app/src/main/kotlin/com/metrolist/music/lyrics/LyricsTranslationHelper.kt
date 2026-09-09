@@ -364,11 +364,6 @@ object LyricsTranslationHelper {
 
                     result
                         .onSuccess { translatedLines ->
-                            // Check if composition is still active before updating state
-                            if (!isCompositionActive) {
-                                return@onSuccess
-                            }
-
                             // Cache the translations
                             val cacheKey = getCacheKey(fullText, mode, targetLanguage)
                             translationCache[cacheKey] = translatedLines
@@ -405,7 +400,9 @@ object LyricsTranslationHelper {
                                         lyrics[originalIndex].translatedTextFlow.value = translatedLines[idx]
                                     }
                                     _hasActiveTranslations.value = true
-                                    _status.value = TranslationStatus.Success
+                                    if (isCompositionActive) {
+                                        _status.value = TranslationStatus.Success
+                                    }
                                 }
 
                                 translatedLines.size < expectedCount -> {
@@ -417,7 +414,9 @@ object LyricsTranslationHelper {
                                         }
                                     }
                                     _hasActiveTranslations.value = true
-                                    _status.value = TranslationStatus.Success
+                                    if (isCompositionActive) {
+                                        _status.value = TranslationStatus.Success
+                                    }
                                 }
                             }
 

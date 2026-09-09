@@ -111,6 +111,17 @@ import com.metrolist.music.constants.AutoLoadMoreKey
 import com.metrolist.music.constants.AutoSkipNextOnErrorKey
 import com.metrolist.music.constants.AutoplayKey
 import com.metrolist.music.constants.AndroidAutoLyricsKey
+import com.metrolist.music.constants.AndroidAutoLyricsTranslationKey
+import com.metrolist.music.constants.AiProviderKey
+import com.metrolist.music.constants.OpenRouterApiKey
+import com.metrolist.music.constants.DeeplApiKey
+import com.metrolist.music.constants.TranslateLanguageKey
+import com.metrolist.music.constants.TranslateModeKey
+import com.metrolist.music.constants.OpenRouterBaseUrlKey
+import com.metrolist.music.constants.OpenRouterModelKey
+import com.metrolist.music.constants.DeeplFormalityKey
+import com.metrolist.music.constants.AiSystemPromptKey
+import com.metrolist.music.lyrics.LyricsTranslationHelper
 import com.metrolist.music.constants.AutomixBassSwapKey
 import com.metrolist.music.constants.AutomixMode
 import com.metrolist.music.constants.AutomixModeKey
@@ -320,6 +331,7 @@ class MusicService :
 
     private var carLyricsEnabled: Boolean = true
     private var carLyricsActive: Boolean = true
+    private var carLyricsTranslationEnabled: Boolean = true
     private var carLyricsJob: Job? = null
     private var currentLyricsEntries: List<LyricsEntry>? = null
     private var lastProjectedLyric: String? = null
@@ -763,6 +775,7 @@ class MusicService :
         } ?: com.metrolist.music.constants.AudioQuality.AUTO
         playerVolume = MutableStateFlow((startupPrefs!![PlayerVolumeKey] ?: 1f).coerceIn(0f, 1f))
         gaplessPlayback = startupPrefs!![GaplessPlaybackKey] ?: true
+        carLyricsTranslationEnabled = startupPrefs!![AndroidAutoLyricsTranslationKey] ?: true
 
         initializeCast()
 
@@ -1201,6 +1214,13 @@ class MusicService :
                 } else if (carLyricsActive) {
                     startCarLyricsTicker()
                 }
+            }
+
+        dataStore.data.map { it[AndroidAutoLyricsTranslationKey] ?: true }
+            .distinctUntilChanged()
+            .collect(scope) { enabled ->
+                carLyricsTranslationEnabled = enabled
+                lastProjectedLyric = null
             }
 
         // Observe and cache common preferences to avoid runBlocking reads in playback callbacks
@@ -5105,23 +5125,22 @@ class MusicService :
         scope.launch {
             try {
                 // 1. Check local Room database
-                val cached = database.lyrics(songId).first()?.lyrics
-                val rawLyrics = if (!cached.isNullOrBlank()) {
-                    cached
+                val cachedEntity = database.lyrics(songId).first()
+                val rawLyrics = if (cachedEntity != null && !cachedEntity.lyrics.isNullOrBlank()) {
+                    cachedEntity.lyrics
                 } else {
                     // 2. Fetch using lyricsHelper
                     val meta = currentMediaMetadata.value
                     if (meta != null && meta.id == songId) {
                         val result = lyricsHelper.getLyrics(meta)
                         if (!result.lyrics.isNullOrBlank()) {
+                            val newEntity = LyricsEntity(
+                                id = songId,
+                                lyrics = result.lyrics,
+                                provider = result.provider,
+                            )
                             database.query {
-                                upsert(
-                                    LyricsEntity(
-                                        id = songId,
-                                        lyrics = result.lyrics,
-                                        provider = result.provider,
-                                    )
-                                )
+                                upsert(newEntity)
                             }
                             result.lyrics
                         } else null
@@ -5129,7 +5148,59 @@ class MusicService :
                 }
 
                 if (!rawLyrics.isNullOrBlank() && isActive) {
-                    currentLyricsEntries = LyricsUtils.parseLyrics(rawLyrics)
+                    val entries = LyricsUtils.parseLyrics(rawLyrics)
+                    currentLyricsEntries = entries
+
+                    // 3. Load cached translations or automatically trigger background AI translation
+                    if (carLyricsTranslationEnabled) {
+                        val entityForTranslation = cachedEntity ?: database.lyrics(songId).first()
+                        if (entityForTranslation != null && !entityForTranslation.translatedLyrics.isNullOrBlank()) {
+                            val translatedLines = entityForTranslation.translatedLyrics.split("\n")
+                            val nonEmptyEntries = entries.filter { it.text.isNotBlank() }
+                            nonEmptyEntries.forEachIndexed { idx, entry ->
+                                if (idx < translatedLines.size) {
+                                    val trans = translatedLines[idx].trim()
+                                    if (trans.isNotBlank()) {
+                                        entry.translatedTextFlow.value = trans
+                                    }
+                                }
+                            }
+                        } else {
+                            // Auto-translate in background if user has AI translation configured
+                            val aiProvider = dataStore.get(AiProviderKey, "OpenRouter")
+                            val openRouterApiKey = dataStore.get(OpenRouterApiKey, "")
+                            val deeplApiKey = dataStore.get(DeeplApiKey, "")
+                            val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
+
+                            if (effectiveApiKey.isNotBlank()) {
+                                val targetLanguage = dataStore.get(TranslateLanguageKey, "en")
+                                val translateMode = dataStore.get(TranslateModeKey, "Literal")
+                                val openRouterBaseUrl = dataStore.get(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
+                                val openRouterModel = dataStore.get(OpenRouterModelKey, "google/gemini-2.5-flash-lite")
+                                val deeplFormality = dataStore.get(DeeplFormalityKey, "default")
+                                val aiSystemPrompt = dataStore.get(AiSystemPromptKey, "")
+
+                                LyricsTranslationHelper.translateLyrics(
+                                    lyrics = entries,
+                                    targetLanguage = targetLanguage,
+                                    apiKey = openRouterApiKey,
+                                    baseUrl = openRouterBaseUrl,
+                                    model = openRouterModel,
+                                    mode = translateMode,
+                                    scope = scope,
+                                    context = this@MusicService,
+                                    provider = aiProvider,
+                                    deeplApiKey = deeplApiKey,
+                                    deeplFormality = deeplFormality,
+                                    useStreaming = true,
+                                    songId = songId,
+                                    database = database,
+                                    systemPrompt = aiSystemPrompt,
+                                )
+                            }
+                        }
+                    }
+
                     startCarLyricsTicker()
                 }
             } catch (e: Exception) {
@@ -5156,7 +5227,16 @@ class MusicService :
                         if (timeSinceStart > 8000 && gapToNext > 4000) {
                             "🎵 [Instrumental]"
                         } else if (activeEntry.text.isNotBlank()) {
-                            "🎤 ${activeEntry.text.trim()}"
+                            val original = activeEntry.text.trim()
+                            val translation = if (carLyricsTranslationEnabled) {
+                                activeEntry.translatedTextFlow.value?.trim()
+                            } else null
+
+                            if (!translation.isNullOrBlank() && !translation.equals(original, ignoreCase = true)) {
+                                "🎤 $original • $translation"
+                            } else {
+                                "🎤 $original"
+                            }
                         } else {
                             null
                         }

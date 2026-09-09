@@ -46,6 +46,7 @@ import com.metrolist.music.LocalDatabase
 import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AndroidAutoLyricsKey
+import com.metrolist.music.constants.AndroidAutoLyricsTranslationKey
 import com.metrolist.music.constants.AndroidAutoSearchLocalLimitKey
 import com.metrolist.music.constants.AndroidAutoSectionsOrderKey
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
@@ -126,6 +127,10 @@ fun AndroidAutoSettings(
 
     val (androidAutoLyrics, onAndroidAutoLyricsChange) = rememberPreference(
         key = AndroidAutoLyricsKey,
+        defaultValue = true
+    )
+    val (androidAutoLyricsTranslation, onAndroidAutoLyricsTranslationChange) = rememberPreference(
+        key = AndroidAutoLyricsTranslationKey,
         defaultValue = true
     )
 
@@ -396,6 +401,33 @@ fun AndroidAutoSettings(
                         )
                     },
                     onClick = { onAndroidAutoLyricsChange(!androidAutoLyrics) }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.translate),
+                    title = { Text(stringResource(R.string.android_auto_lyrics_translation)) },
+                    description = { Text(stringResource(R.string.android_auto_lyrics_translation_desc)) },
+                    enabled = androidAutoLyrics,
+                    trailingContent = {
+                        Switch(
+                            checked = androidAutoLyricsTranslation,
+                            enabled = androidAutoLyrics,
+                            onCheckedChange = onAndroidAutoLyricsTranslationChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (androidAutoLyricsTranslation) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            }
+                        )
+                    },
+                    onClick = {
+                        if (androidAutoLyrics) {
+                            onAndroidAutoLyricsTranslationChange(!androidAutoLyricsTranslation)
+                        }
+                    }
                 )
             )
         )
