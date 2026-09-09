@@ -34,11 +34,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -687,6 +690,7 @@ fun AutoPlaylistScreen(
                                 .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
                         ).padding(16.dp),
             ) {
+                val isNothing = LocalNothingTheme.current
                 FloatingActionButton(
                     onClick = {
                         filePickerLauncher.launch(
@@ -700,10 +704,15 @@ fun AutoPlaylistScreen(
                             ),
                         )
                     },
+                    containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.shape,
+                    modifier = if (isNothing) Modifier.border(2.dp, Color(0xFFD71921), CircleShape) else Modifier,
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.upload),
                         contentDescription = stringResource(R.string.upload_songs),
+                        tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
             }

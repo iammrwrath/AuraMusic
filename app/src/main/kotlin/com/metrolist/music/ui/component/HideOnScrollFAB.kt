@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -21,13 +22,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -55,34 +60,11 @@ fun BoxScope.HideOnScrollFAB(
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
-            }
-        }
+        FABContent(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
     }
 }
 
@@ -106,34 +88,11 @@ fun BoxScope.HideOnScrollFAB(
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
-            ) {
-                Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
-                )
-            }
-        }
+        FABContent(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
     }
 }
 
@@ -157,33 +116,59 @@ fun BoxScope.HideOnScrollFAB(
                     .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal),
             ),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
-        ) {
-            if (onRecognitionClick != null) {
-                SmallFloatingActionButton(
-                    onClick = onRecognitionClick,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.mic),
-                        contentDescription = stringResource(R.string.recognize_music),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-            FloatingActionButton(
-                onClick = onClick,
+        FABContent(
+            icon = icon,
+            onClick = onClick,
+            onRecognitionClick = onRecognitionClick,
+        )
+    }
+}
+
+@Composable
+private fun FABContent(
+    @DrawableRes icon: Int,
+    onClick: () -> Unit,
+    onRecognitionClick: (() -> Unit)?,
+) {
+    val isNothing = LocalNothingTheme.current
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(16.dp),
+    ) {
+        if (onRecognitionClick != null) {
+            SmallFloatingActionButton(
+                onClick = onRecognitionClick,
+                containerColor = if (isNothing) Color(0xFF141414) else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
+                shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.smallShape,
+                modifier = Modifier
+                    .size(40.dp)
+                    .then(
+                        if (isNothing) Modifier.border(1.dp, Color.White.copy(alpha = 0.22f), CircleShape)
+                        else Modifier
+                    ),
             ) {
                 Icon(
-                    painter = painterResource(icon),
-                    contentDescription = null,
+                    painter = painterResource(R.drawable.mic),
+                    contentDescription = stringResource(R.string.recognize_music),
+                    modifier = Modifier.size(20.dp),
+                    tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
+            Spacer(modifier = Modifier.height(12.dp))
+        }
+        FloatingActionButton(
+            onClick = onClick,
+            containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.shape,
+            modifier = if (isNothing) Modifier.border(2.dp, Color(0xFFD71921), CircleShape) else Modifier,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+            )
         }
     }
 }

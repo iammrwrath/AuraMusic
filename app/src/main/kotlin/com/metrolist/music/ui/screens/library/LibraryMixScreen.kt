@@ -27,12 +27,17 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -1052,9 +1057,13 @@ fun LibraryMixScreen(
             }
         }
 
+        val isNothing = LocalNothingTheme.current
         // Always visible + button (no scroll hiding)
         FloatingActionButton(
             onClick = { showCreatePlaylistDialog = true },
+            containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.shape,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .windowInsetsPadding(
@@ -1062,10 +1071,12 @@ fun LibraryMixScreen(
                         .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
                 )
                 .padding(16.dp)
+                .then(if (isNothing) Modifier.border(2.dp, Color(0xFFD71921), CircleShape) else Modifier)
         ) {
             Icon(
                 painter = painterResource(R.drawable.add),
                 contentDescription = stringResource(R.string.create_playlist),
+                tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
 

@@ -6,8 +6,13 @@
 package com.metrolist.music.ui.screens.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.ui.graphics.Color
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -590,9 +595,13 @@ fun LibraryPlaylistsScreen(
             }
         }
 
+        val isNothing = LocalNothingTheme.current
         // Always visible + button (no scroll hiding)
         FloatingActionButton(
             onClick = { showCreatePlaylistDialog = true },
+            containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+            contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+            shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.shape,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .windowInsetsPadding(
@@ -600,10 +609,12 @@ fun LibraryPlaylistsScreen(
                         .only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal)
                 )
                 .padding(16.dp)
+                .then(if (isNothing) Modifier.border(2.dp, Color(0xFFD71921), CircleShape) else Modifier)
         ) {
             Icon(
                 painter = painterResource(R.drawable.add),
                 contentDescription = stringResource(R.string.create_playlist),
+                tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
             )
         }
     }

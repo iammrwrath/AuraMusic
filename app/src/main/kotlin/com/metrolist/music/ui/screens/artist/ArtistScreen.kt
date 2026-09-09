@@ -11,7 +11,11 @@ import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FloatingActionButtonDefaults
+import com.metrolist.music.ui.theme.LocalNothingTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -978,25 +982,36 @@ fun ArtistScreen(
                     }
                 }
 
+                val isNothing = LocalNothingTheme.current
                 if (showLocalFab) {
                     androidx.compose.material3.SmallFloatingActionButton(
-                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp), // Align center with standard FAB (56dp vs 48dp)
+                        modifier = Modifier.padding(16.dp).offset(x = (-4).dp)
+                            .then(if (isNothing) Modifier.border(1.5.dp, Color(0xFFD71921), CircleShape) else Modifier),
                         onClick = onPlayAllClick,
+                        containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                        shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.smallShape,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.play),
                             contentDescription = "Play All",
+                            tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 } else {
                     androidx.compose.material3.FloatingActionButton(
-                        modifier = Modifier.padding(16.dp),
+                        modifier = Modifier.padding(16.dp)
+                            .then(if (isNothing) Modifier.border(2.dp, Color(0xFFD71921), CircleShape) else Modifier),
                         onClick = onPlayAllClick,
+                        containerColor = if (isNothing) Color(0xFFD71921) else MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                        shape = if (isNothing) CircleShape else FloatingActionButtonDefaults.shape,
                     ) {
                         Icon(
                             painter = painterResource(R.drawable.play),
                             contentDescription = "Play All",
                             modifier = Modifier.size(32.dp),
+                            tint = if (isNothing) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 }
