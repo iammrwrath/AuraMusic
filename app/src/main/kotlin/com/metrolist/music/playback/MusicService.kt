@@ -117,6 +117,7 @@ import com.metrolist.music.constants.AutomixModeKey
 import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
+import com.metrolist.music.constants.GaplessPlaybackKey
 import com.metrolist.music.constants.DisableLoadMoreWhenRepeatAllKey
 import com.metrolist.music.constants.DiscordActivityNameKey
 import com.metrolist.music.constants.DiscordActivityTypeKey
@@ -311,6 +312,8 @@ class MusicService :
     private var crossfadeEnabled = false
     private var crossfadeDuration = 5000f
     private var crossfadeGapless = true
+    private var gaplessPlayback = true
+    private var prefetchNextTrackJob: Job? = null
     private var crossfadeMessage: PlayerMessage? = null
     private var automixMode: AutomixMode = AutomixMode.SMART_AUTOMIX
     private var automixBassSwap: Boolean = true
@@ -759,6 +762,7 @@ class MusicService :
             else com.metrolist.music.constants.AudioQuality.entries.find { it.name == value }
         } ?: com.metrolist.music.constants.AudioQuality.AUTO
         playerVolume = MutableStateFlow((startupPrefs!![PlayerVolumeKey] ?: 1f).coerceIn(0f, 1f))
+        gaplessPlayback = startupPrefs!![GaplessPlaybackKey] ?: true
 
         initializeCast()
 
@@ -1161,6 +1165,13 @@ class MusicService :
                 crossfadeEnabled = enabled
                 crossfadeDuration = duration * 1000f // Convert to ms
                 crossfadeGapless = gapless
+            }
+
+        dataStore.data.map { prefs ->
+            prefs[GaplessPlaybackKey] ?: true
+        }.distinctUntilChanged()
+            .collect(scope) { gapless ->
+                gaplessPlayback = gapless
             }
 
         dataStore.data.map { prefs ->
@@ -2564,6 +2575,7 @@ class MusicService :
         }
 
         fetchLyricsAndStartCarLyrics(mediaItem)
+        prefetchNextTrack()
 
         // Skip if this change was triggered by Cast sync (to prevent loops)
         if (castConnectionHandler?.isCasting?.value == true &&
@@ -4746,7 +4758,7 @@ class MusicService :
         crossfadeMessage = null
 
         if (automixMode == AutomixMode.OFF || !crossfadeEnabled) return
-        if (crossfadeGapless && isNextItemGapless()) return
+        if ((crossfadeGapless || gaplessPlayback) && isNextItemGapless()) return
         if (!player.hasNextMediaItem() && player.repeatMode != REPEAT_MODE_ONE) return
 
         val mediaCrossfadeDuration = AutomixController.calculateTransitionDurationMs(
@@ -4781,6 +4793,77 @@ class MusicService :
         if (nextIndex == C.INDEX_UNSET) return false
         val next = player.getMediaItemAt(nextIndex).mediaMetadata
         return current.albumTitle != null && current.albumTitle == next.albumTitle
+    }
+
+    private fun prefetchNextTrack() {
+        if (!gaplessPlayback) return
+        prefetchNextTrackJob?.cancel()
+        prefetchNextTrackJob = scope.launch(Dispatchers.IO) {
+            try {
+                // Allow current track playback buffer to initialize smoothly
+                delay(1500)
+
+                val nextIndex = withContext(Dispatchers.Main) {
+                    if (::player.isInitialized && player.hasNextMediaItem()) {
+                        player.nextMediaItemIndex
+                    } else {
+                        C.INDEX_UNSET
+                    }
+                }
+                if (nextIndex == C.INDEX_UNSET) return@launch
+
+                val nextMediaItem = withContext(Dispatchers.Main) {
+                    if (::player.isInitialized && nextIndex < player.mediaItemCount) {
+                        player.getMediaItemAt(nextIndex)
+                    } else {
+                        null
+                    }
+                } ?: return@launch
+
+                val nextMediaId = nextMediaItem.mediaId
+                if (nextMediaId.isBlank()) return@launch
+
+                // If already cached in memory or disk, skip prefetch
+                if (songUrlCache[nextMediaId] != null) return@launch
+                if (downloadCache.isCached(nextMediaId, 0, CHUNK_LENGTH)) return@launch
+                val usePlayerCache = dataStore.get(EnableSongCacheKey, true)
+                if (usePlayerCache && playerCache.isCached(nextMediaId, 0, CHUNK_LENGTH)) return@launch
+
+                Timber.tag(TAG).d("PREFETCHING STREAM for gapless playback: %s", nextMediaId)
+                val song = database.songEntity(nextMediaId)
+                val playbackData = InnerTubeXPlayer.playerResponseForPlayback(
+                    videoId = nextMediaId,
+                    audioQuality = audioQuality,
+                    connectivityManager = connectivityManager,
+                    contentHints = ContentHints(
+                        isExplicit = song?.explicit,
+                        isUploaded = song?.isUploaded,
+                    )
+                ).getOrNull()
+
+                if (playbackData != null && playbackData.streamUrl.isNotBlank()) {
+                    songUrlCache.put(
+                        mediaId = nextMediaId,
+                        url = playbackData.streamUrl,
+                        requestHeaders = playbackData.streamHeaders,
+                        clientName = playbackData.streamClient,
+                        expiresInSeconds = playbackData.streamExpiresInSeconds,
+                        requireBoundedRange = playbackData.requireBoundedRange,
+                        rangeChunkSizeBytes = playbackData.rangeChunkSizeBytes,
+                        useRangeChunks = playbackData.useRangeChunks,
+                        expectedGeneration = songUrlCache.generation(nextMediaId),
+                    )
+                    playbackData.playbackTracking?.videostatsPlaybackUrl?.baseUrl?.let {
+                        playbackUrlCache[cacheKey(nextMediaId)] = it
+                    }
+                    Timber.tag(TAG).i("PREFETCH SUCCESS for gapless playback: %s", nextMediaId)
+                }
+            } catch (_: kotlinx.coroutines.CancellationException) {
+                // Expected when skipping tracks
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "Prefetch for gapless playback failed")
+            }
+        }
     }
 
     private fun startCrossfade() {

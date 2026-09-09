@@ -48,6 +48,7 @@ import com.metrolist.music.constants.AutomixModeKey
 import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
+import com.metrolist.music.constants.GaplessPlaybackKey
 import com.metrolist.music.constants.AutoLoadMoreKey
 import com.metrolist.music.constants.AutoRadioQueueKey
 import com.metrolist.music.constants.AutoSkipNextOnErrorKey
@@ -120,6 +121,10 @@ fun PlayerSettings(
     )
     val (crossfadeGapless, onCrossfadeGaplessChange) = rememberPreference(
         CrossfadeGaplessKey,
+        defaultValue = true
+    )
+    val (gaplessPlayback, onGaplessPlaybackChange) = rememberPreference(
+        GaplessPlaybackKey,
         defaultValue = true
     )
     var showAutomixModeDialog by remember { mutableStateOf(false) }
@@ -325,13 +330,34 @@ fun PlayerSettings(
                     description = {
                         Text(
                             when (audioQuality) {
-                                AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
-                                AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
-                                AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
+                                AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto) + " • " + stringResource(R.string.audio_quality_auto_detail)
+                                AudioQuality.HIGH -> stringResource(R.string.audio_quality_high) + " • " + stringResource(R.string.audio_quality_high_detail)
+                                AudioQuality.LOW -> stringResource(R.string.audio_quality_low) + " • " + stringResource(R.string.audio_quality_low_detail)
                             }
                         )
                     },
                     onClick = { showAudioQualityDialog = true }
+                ))
+                add(Material3SettingsItem(
+                    icon = painterResource(R.drawable.album),
+                    title = { Text(stringResource(R.string.gapless_playback)) },
+                    description = { Text(stringResource(R.string.gapless_playback_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = gaplessPlayback,
+                            onCheckedChange = onGaplessPlaybackChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        id = if (gaplessPlayback) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize)
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onGaplessPlaybackChange(!gaplessPlayback) }
                 ))
                 add(Material3SettingsItem(
                     icon = painterResource(R.drawable.linear_scale),

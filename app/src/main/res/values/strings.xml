@@ -279,10 +279,27 @@
     <string name="restart_to_take_effect">Restart to take effect</string>
 
     <string name="player_and_audio">Player and audio</string>
-    <string name="audio_quality">Audio quality</string>
-    <string name="audio_quality_auto">Auto</string>
-    <string name="audio_quality_high">High</string>
-    <string name="audio_quality_low">Low</string>
+    <string name="audio_quality">Audio Quality</string>
+    <string name="audio_quality_auto">Auto (Adaptive)</string>
+    <string name="audio_quality_high">High (256 kbps AAC / 160 kbps Opus)</string>
+    <string name="audio_quality_low">Low (48–64 kbps Data Saver)</string>
+    <string name="audio_quality_desc_section">Streaming bitrate and audio fidelity</string>
+    <string name="audio_quality_high_detail">Best for car audio, Hi-Fi systems, and studio headphones</string>
+    <string name="audio_quality_auto_detail">Dynamically balances audio fidelity and mobile data usage</string>
+    <string name="audio_quality_low_detail">Conserves mobile data on metered and slow networks</string>
+    <string name="gapless_playback">Gapless Playback</string>
+    <string name="gapless_playback_desc">Eliminates silence between consecutive tracks for seamless album and live recording listening</string>
+    <!-- Settings Hub subtitles -->
+    <string name="settings_desc_player">High bitrate, gapless playback, crossfade, and equalizer</string>
+    <string name="settings_desc_appearance">Themes, Nothing OS Dot Matrix, and player UI style</string>
+    <string name="settings_desc_content">Language, country, explicit content, and discovery</string>
+    <string name="settings_desc_ai">AI-powered romanization and synchronized translations</string>
+    <string name="settings_desc_android_auto">Car display, voice search, and driving controls</string>
+    <string name="settings_desc_storage">Cache size, offline downloads, and storage optimization</string>
+    <string name="settings_desc_backup">Export or import playlists, settings, and library data</string>
+    <string name="settings_desc_privacy">Playback history, data logging, and permissions</string>
+    <string name="settings_desc_updater">Check for app updates and view release notes</string>
+    <string name="settings_desc_about">Version info, open-source licenses, and GitHub</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
