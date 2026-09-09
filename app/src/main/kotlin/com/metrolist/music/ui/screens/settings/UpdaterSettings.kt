@@ -19,16 +19,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import java.io.File
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -83,6 +86,10 @@ fun UpdaterScreen(
     var showChangelog by remember { mutableStateOf(false) }
     var changelogContent by remember { mutableStateOf<String?>(null) }
     var checkError by remember { mutableStateOf<String?>(null) }
+    var isDownloading by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableFloatStateOf(0f) }
+    var downloadError by remember { mutableStateOf<String?>(null) }
+    var downloadedApkFile by remember { mutableStateOf<File?>(null) }
     val failedToCheckUpdatesTemplate = stringResource(R.string.failed_to_check_updates)
 
     val coroutineScope = rememberCoroutineScope()
@@ -287,23 +294,100 @@ fun UpdaterScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    val finalDownloadUrl = downloadUrl ?: Updater.getDownloadUrlForCurrentVariant(latestRelease!!)
+                    val finalDownloadUrl = downloadUrl ?: latestRelease?.let { Updater.getDownloadUrlForCurrentVariant(it) }
                     if (finalDownloadUrl != null) {
-                        Button(
+                        if (isDownloading) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                LinearProgressIndicator(
+                                    progress = { downloadProgress },
+                                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    text = "Downloading update... ${(downloadProgress * 100).toInt()}%",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        } else if (downloadedApkFile != null && downloadedApkFile!!.exists()) {
+                            Button(
+                                onClick = {
+                                    Updater.installApk(context, downloadedApkFile!!)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(text = "Install Update Now")
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        } else {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        isDownloading = true
+                                        downloadError = null
+                                        downloadProgress = 0f
+                                        withContext(Dispatchers.IO) {
+                                            Updater.downloadApk(context, finalDownloadUrl) { progress ->
+                                                downloadProgress = progress
+                                            }.onSuccess { file ->
+                                                downloadedApkFile = file
+                                                withContext(Dispatchers.Main) {
+                                                    Updater.installApk(context, file)
+                                                }
+                                            }.onFailure { err ->
+                                                downloadError = err.message ?: "Download failed"
+                                            }
+                                        }
+                                        isDownloading = false
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.download),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(text = "Download & Install Update")
+                            }
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        if (downloadError != null) {
+                            Text(
+                                text = "Error: $downloadError",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                        }
+
+                        OutlinedButton(
                             onClick = { uriHandler.openUri(finalDownloadUrl) },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
                         ) {
-                            Icon(
-                                painter = painterResource(R.drawable.download),
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp),
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(text = "Download Update")
+                            Text(text = "Open in Browser")
                         }
                         Spacer(Modifier.height(8.dp))
                     }

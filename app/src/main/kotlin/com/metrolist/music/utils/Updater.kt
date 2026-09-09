@@ -5,12 +5,21 @@
 
 package com.metrolist.music.utils
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.core.content.FileProvider
 import com.metrolist.music.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -272,4 +281,100 @@ object Updater {
      * Get the latest release info (cached)
      */
     fun getCachedLatestRelease(): ReleaseInfo? = cachedReleaseInfo
+
+    /**
+     * Downloads the APK file directly to cache directory with progress reporting.
+     */
+    suspend fun downloadApk(
+        context: Context,
+        downloadUrl: String,
+        onProgress: (Float) -> Unit
+    ): Result<File> = withContext(Dispatchers.IO) {
+        runCatching {
+            val okHttpClient = OkHttpClient.Builder()
+                .followRedirects(true)
+                .followSslRedirects(true)
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .readTimeout(java.time.Duration.ofMinutes(5))
+                .build()
+
+            val request = Request.Builder()
+                .url(downloadUrl)
+                .header("User-Agent", "AuraMusic-Updater")
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("HTTP ${response.code}: ${response.message}")
+            }
+
+            val body = response.body ?: throw Exception("Empty response body from update server")
+            val totalBytes = body.contentLength()
+
+            val updateDir = File(context.cacheDir, "updates").apply { mkdirs() }
+            val apkFile = File(updateDir, "AuraMusic-update.apk")
+            if (apkFile.exists()) {
+                apkFile.delete()
+            }
+
+            var bytesRead = 0L
+            body.byteStream().use { input ->
+                apkFile.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    var read: Int
+                    while (input.read(buffer).also { read = it } != -1) {
+                        output.write(buffer, 0, read)
+                        bytesRead += read
+                        if (totalBytes > 0) {
+                            onProgress((bytesRead.toFloat() / totalBytes).coerceIn(0f, 1f))
+                        }
+                    }
+                    output.flush()
+                }
+            }
+
+            if (!apkFile.exists() || apkFile.length() < 1_000_000) {
+                throw Exception("Downloaded file is incomplete (${apkFile.length()} bytes)")
+            }
+
+            onProgress(1.0f)
+            apkFile
+        }
+    }
+
+    /**
+     * Triggers the Android package installer for the downloaded APK.
+     * Returns true if the installer was launched, false if unknown sources permission is required.
+     */
+    fun installApk(context: Context, file: File): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!context.packageManager.canRequestPackageInstalls()) {
+                    val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                        data = Uri.parse("package:${context.packageName}")
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(settingsIntent)
+                    return false
+                }
+            }
+
+            val apkUri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.FileProvider",
+                file
+            )
+
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(installIntent)
+            true
+        } catch (e: Exception) {
+            timber.log.Timber.e(e, "Failed to launch package installer")
+            false
+        }
+    }
 }
