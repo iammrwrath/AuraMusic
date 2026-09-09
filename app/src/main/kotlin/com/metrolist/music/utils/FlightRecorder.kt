@@ -69,7 +69,7 @@ object FlightRecorder {
                 Log.ASSERT -> "A"
                 else -> "?"
             }
-            val tag = (entry.tag ?: "Metrolist").padEnd(15).take(15)
+            val tag = (entry.tag ?: "AuraMusic").padEnd(15).take(15)
             val line = "[$time] $level/$tag: ${entry.message}"
             if (entry.throwable != null) {
                 val sw = StringWriter()
