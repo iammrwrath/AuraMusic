@@ -12,16 +12,15 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.metrolist.music.BuildConfig
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import java.io.File
+import java.time.Duration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import timber.log.Timber
 
 data class ReleaseInfo(
     val tagName: String,
@@ -43,7 +42,20 @@ data class ReleaseAsset(
 )
 
 object Updater {
-    private val client = HttpClient()
+    private val httpClient = OkHttpClient.Builder()
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .connectTimeout(Duration.ofSeconds(15))
+        .readTimeout(Duration.ofSeconds(15))
+        .build()
+
+    private val noRedirectClient = OkHttpClient.Builder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .connectTimeout(Duration.ofSeconds(10))
+        .readTimeout(Duration.ofSeconds(10))
+        .build()
+
     var lastCheckTime = -1L
         private set
     
@@ -53,6 +65,13 @@ object Updater {
     private const val CHECK_INTERVAL_MILLIS = 2 * 60 * 60 * 1000L // 2 hours
     private const val GITHUB_API_BASE = "https://api.github.com/repos/iammrwrath/AuraMusic"
     const val APK_NAME = "AuraMusic.apk"
+
+    private fun newApiRequestBuilder(url: String): Request.Builder {
+        return Request.Builder()
+            .url(url)
+            .header("User-Agent", "AuraMusic-Android/${BuildConfig.BASE_VERSION_NAME}")
+            .header("Accept", "application/vnd.github.v3+json")
+    }
 
     /**
      * Extracts numeric version components, handling prefixes like 'v' or suffixes/words.
@@ -110,14 +129,15 @@ object Updater {
         val assets = mutableListOf<ReleaseAsset>()
         
         for (i in 0 until assetsArray.length()) {
-            val asset = assetsArray.getJSONObject(i)
-            val name = asset.getString("name")
+            val asset = assetsArray.optJSONObject(i) ?: continue
+            val name = asset.optString("name", "")
             
             // Skip non-APK files
             if (!name.endsWith(".apk")) continue
             
-            val downloadUrl = asset.getString("browser_download_url")
-            val size = asset.getLong("size")
+            val downloadUrl = asset.optString("browser_download_url", "")
+            if (downloadUrl.isEmpty()) continue
+            val size = asset.optLong("size", 0L)
             
             // Parse architecture and variant from filename
             val (arch, variant) = when {
@@ -134,16 +154,86 @@ object Updater {
                 else -> "universal" to "foss"
             }
             
-            if (arch != null && variant != null) {
-                assets.add(ReleaseAsset(name, downloadUrl, size, arch, variant))
-            }
+            assets.add(ReleaseAsset(name, downloadUrl, size, arch, variant))
         }
         
         return assets
     }
 
     /**
-     * Fetch latest release from GitHub API
+     * Fallback to GitHub web redirect which has zero API rate limits
+     */
+    private fun fetchLatestReleaseFromWebRedirect(): ReleaseInfo? {
+        return try {
+            val headRequest = Request.Builder()
+                .url("https://github.com/iammrwrath/AuraMusic/releases/latest")
+                .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
+                .head()
+                .build()
+
+            val headResponse = noRedirectClient.newCall(headRequest).execute()
+            var tag: String? = null
+
+            val location = headResponse.header("Location")
+            if (!location.isNullOrEmpty() && location.contains("/tag/")) {
+                tag = location.substringAfterLast("/tag/").substringAfterLast("/").trim()
+            }
+
+            if (tag.isNullOrEmpty() || tag.contains("latest")) {
+                val getRequest = Request.Builder()
+                    .url("https://github.com/iammrwrath/AuraMusic/releases/latest")
+                    .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
+                    .build()
+                val getResponse = httpClient.newCall(getRequest).execute()
+                val finalUrl = getResponse.request.url.toString()
+                if (finalUrl.contains("/tag/")) {
+                    tag = finalUrl.substringAfterLast("/tag/").substringAfterLast("/").trim()
+                }
+            }
+
+            if (!tag.isNullOrEmpty() && !tag.contains("latest")) {
+                val cleanTag = tag.removePrefix("v")
+                val fallbackAssets = listOf(
+                    ReleaseAsset(
+                        name = APK_NAME,
+                        downloadUrl = "https://github.com/iammrwrath/AuraMusic/releases/download/$tag/$APK_NAME",
+                        size = 0L,
+                        architecture = "universal",
+                        variant = "foss"
+                    ),
+                    ReleaseAsset(
+                        name = "AuraMusic-$tag.apk",
+                        downloadUrl = "https://github.com/iammrwrath/AuraMusic/releases/download/$tag/AuraMusic-$tag.apk",
+                        size = 0L,
+                        architecture = "universal",
+                        variant = "foss"
+                    ),
+                    ReleaseAsset(
+                        name = "AuraMusic-$tag.zip",
+                        downloadUrl = "https://github.com/iammrwrath/AuraMusic/releases/download/$tag/AuraMusic-$tag.zip",
+                        size = 0L,
+                        architecture = "universal",
+                        variant = "foss"
+                    )
+                )
+                ReleaseInfo(
+                    tagName = tag,
+                    versionName = "AuraMusic v$cleanTag",
+                    description = "AuraMusic v$cleanTag Release",
+                    releaseDate = "",
+                    assets = fallbackAssets
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Web redirect fallback failed")
+            null
+        }
+    }
+
+    /**
+     * Fetch latest release from GitHub API with fallback
      */
     suspend fun getLatestRelease(forceRefresh: Boolean = false): Result<ReleaseInfo> =
         withContext(Dispatchers.IO) {
@@ -152,22 +242,47 @@ object Updater {
                 if (cachedReleaseInfo != null && !forceRefresh) {
                     return@runCatching cachedReleaseInfo!!
                 }
-                
-                val response = client.get("$GITHUB_API_BASE/releases/latest")
-                    .bodyAsText()
-                val json = JSONObject(response)
-                
-                val releaseInfo = ReleaseInfo(
-                    tagName = json.getString("tag_name"),
-                    versionName = json.getString("name"),
-                    description = json.getString("body"),
-                    releaseDate = json.getString("published_at"),
-                    assets = parseAssets(json.getJSONArray("assets"))
-                )
-                
-                cachedReleaseInfo = releaseInfo
-                lastCheckTime = System.currentTimeMillis()
-                releaseInfo
+
+                var releaseInfo: ReleaseInfo? = null
+
+                // 1. Try GitHub REST API with User-Agent & Accept headers
+                try {
+                    val request = newApiRequestBuilder("$GITHUB_API_BASE/releases/latest").build()
+                    val response = httpClient.newCall(request).execute()
+                    val bodyString = response.body?.string()
+
+                    if (response.isSuccessful && !bodyString.isNullOrEmpty()) {
+                        val json = JSONObject(bodyString)
+                        if (json.has("tag_name")) {
+                            releaseInfo = ReleaseInfo(
+                                tagName = json.getString("tag_name"),
+                                versionName = json.optString("name", json.getString("tag_name")),
+                                description = json.optString("body", ""),
+                                releaseDate = json.optString("published_at", ""),
+                                assets = parseAssets(json.optJSONArray("assets") ?: JSONArray())
+                            )
+                        } else {
+                            Timber.w("GitHub API response lacked tag_name: %s", bodyString)
+                        }
+                    } else {
+                        Timber.w("GitHub API returned code %d: %s", response.code, bodyString)
+                    }
+                } catch (e: Exception) {
+                    Timber.w(e, "GitHub API release check failed, attempting fallback")
+                }
+
+                // 2. Fallback: Rate-limit-free web redirect check
+                if (releaseInfo == null) {
+                    releaseInfo = fetchLatestReleaseFromWebRedirect()
+                }
+
+                if (releaseInfo != null) {
+                    cachedReleaseInfo = releaseInfo
+                    lastCheckTime = System.currentTimeMillis()
+                    releaseInfo
+                } else {
+                    throw Exception("Could not retrieve latest release information. Please check your internet connection.")
+                }
             }
         }
 
@@ -180,36 +295,52 @@ object Updater {
                 if (cachedAllReleases.isNotEmpty() && !forceRefresh) {
                     return@runCatching cachedAllReleases
                 }
-                
+
                 val releases = mutableListOf<ReleaseInfo>()
                 var page = 1
                 var hasMore = true
-                
-                while (hasMore && page <= 10) { // Limit to 10 pages
-                    val response = client.get("$GITHUB_API_BASE/releases?page=$page&per_page=30")
-                        .bodyAsText()
-                    val json = JSONArray(response)
-                    
+
+                while (hasMore && page <= 5) {
+                    val request = newApiRequestBuilder("$GITHUB_API_BASE/releases?page=$page&per_page=30").build()
+                    val response = httpClient.newCall(request).execute()
+                    val bodyString = response.body?.string()
+
+                    if (!response.isSuccessful || bodyString.isNullOrEmpty() || !bodyString.trimStart().startsWith("[")) {
+                        break
+                    }
+
+                    val json = JSONArray(bodyString)
                     if (json.length() == 0) {
                         hasMore = false
                         break
                     }
-                    
+
                     for (i in 0 until json.length()) {
-                        val releaseObj = json.getJSONObject(i)
-                        releases.add(ReleaseInfo(
-                            tagName = releaseObj.getString("tag_name"),
-                            versionName = releaseObj.getString("name"),
-                            description = releaseObj.getString("body"),
-                            releaseDate = releaseObj.getString("published_at"),
-                            assets = parseAssets(releaseObj.getJSONArray("assets"))
-                        ))
+                        val releaseObj = json.optJSONObject(i) ?: continue
+                        val tagName = releaseObj.optString("tag_name", "")
+                        if (tagName.isEmpty()) continue
+
+                        releases.add(
+                            ReleaseInfo(
+                                tagName = tagName,
+                                versionName = releaseObj.optString("name", tagName),
+                                description = releaseObj.optString("body", ""),
+                                releaseDate = releaseObj.optString("published_at", ""),
+                                assets = parseAssets(releaseObj.optJSONArray("assets") ?: JSONArray())
+                            )
+                        )
                     }
-                    
+
                     page++
                 }
-                
-                cachedAllReleases = releases
+
+                if (releases.isEmpty() && cachedReleaseInfo != null) {
+                    releases.add(cachedReleaseInfo!!)
+                }
+
+                if (releases.isNotEmpty()) {
+                    cachedAllReleases = releases
+                }
                 releases
             }
         }

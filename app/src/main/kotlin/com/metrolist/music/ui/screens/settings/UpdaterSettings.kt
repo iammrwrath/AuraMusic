@@ -121,10 +121,13 @@ fun UpdaterScreen(
                             updateAvailable = hasUpdate
                             changelogContent = releaseInfo.description
                             downloadUrl = Updater.getDownloadUrlForCurrentVariant(releaseInfo)
+                            checkError = null
                         }
                         hasChecked = true
                     }.onFailure {
-                        checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
+                        if (latestRelease == null) {
+                            checkError = String.format(failedToCheckUpdatesTemplate, it.message ?: "Unknown error")
+                        }
                         hasChecked = true
                     }
             }
@@ -246,13 +249,15 @@ fun UpdaterScreen(
         )
 
         checkError?.let {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            if (latestRelease == null) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
         }
 
         if (updateAvailable && latestRelease != null) {
