@@ -29,10 +29,11 @@ def search_candidate_files(issue_text: str):
             referenced_files.add(str(path))
     return list(referenced_files)
 
-def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-2.5-flash") -> str:
+def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.6-flash") -> str:
     """Calls Gemini Flash model via REST API with fallback support."""
     models_to_try = [primary_model]
-    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+    # Updated fallback models to currently supported versions
+    for fallback in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.0-flash-exp"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -81,7 +82,7 @@ def main():
     issue_title = get_env_var("ISSUE_TITLE", "Diagnostic Report")
     issue_body = get_env_var("ISSUE_BODY", "")
     issue_number = get_env_var("ISSUE_NUMBER", "0")
-    model_name = get_env_var("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name = get_env_var("GEMINI_MODEL", "gemini-3.6-flash")
 
     api_key = get_env_var("GEMINI_API_KEY")
     if not api_key:
@@ -183,7 +184,7 @@ Format your response strictly as follows:
         if os.path.exists(patch_file):
             os.remove(patch_file)
         with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
-            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied to the branch: `{apply_proc.stderr.strip()}`\n")
+            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied to the branch. Please review the diagnosis and patch above and apply manually if needed.\n")
         sys.exit(0)
 
     print("[✓] Patch applied successfully!")
