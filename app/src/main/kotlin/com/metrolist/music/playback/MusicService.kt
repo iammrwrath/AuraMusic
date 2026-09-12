@@ -191,6 +191,7 @@ import com.metrolist.music.db.MusicDatabase
 import com.metrolist.music.db.entities.Event
 import com.metrolist.music.db.entities.FormatEntity
 import com.metrolist.music.db.entities.LyricsEntity
+import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
 import com.metrolist.music.db.entities.RelatedSongMap
 import com.metrolist.music.db.entities.Song
@@ -1742,14 +1743,14 @@ class MusicService :
                     .setDisplayName(getString(R.string.start_radio))
                     .setIconResId(R.drawable.radio)
                     .setSessionCommand(CommandToggleStartRadio)
-                    .setEnabled(currentSong.value != null)
+                    .setEnabled(currentSong.value != null || currentMediaMetadata.value != null || player.currentMediaItem != null)
                     .build(),
                 CommandButton
                     .Builder()
                     .setDisplayName(getString(R.string.android_auto_target_playlist))
                     .setIconResId(R.drawable.playlist_add)
                     .setSessionCommand(CommandAddToTargetPlaylist)
-                    .setEnabled(currentSong.value != null)
+                    .setEnabled(currentSong.value != null || currentMediaMetadata.value != null || player.currentMediaItem != null)
                     .build(),
                 CommandButton
                     .Builder()
@@ -2325,23 +2326,44 @@ class MusicService :
     }
 
     fun addToTargetPlaylist() {
-        scope.launch {
-            val currentSong = currentSong.first() ?: return@launch
-            val targetPlaylistId = dataStore.get(AndroidAutoTargetPlaylistKey, MediaSessionConstants.TARGET_PLAYLIST_AUTO)
+        scope.launch(Dispatchers.IO) {
+            val song = currentSong.first()
+            val metadata = currentMediaMetadata.value ?: player.currentMetadata
+            if (song == null && metadata == null) return@launch
 
-            if (targetPlaylistId == MediaSessionConstants.TARGET_PLAYLIST_AUTO) {
-                Handler(Looper.getMainLooper()).post {
-                    Toast
-                        .makeText(
-                            this@MusicService,
-                            getString(R.string.android_auto_target_playlist_not_set),
-                            Toast.LENGTH_SHORT,
-                        ).show()
+            val songId = song?.id ?: metadata?.id ?: return@launch
+
+            if (metadata != null) {
+                val duration = (player.duration.takeIf { it > 0 } ?: -1L).div(1000).toInt()
+                val effectiveMetadata = if (metadata.duration <= 0 && duration > 0) metadata.copy(duration = duration) else metadata
+                database.withTransaction {
+                    insert(effectiveMetadata)
                 }
-                return@launch
             }
 
-            val targetPlaylist = database.playlist(targetPlaylistId).first()
+            val targetPlaylistId = dataStore.get(AndroidAutoTargetPlaylistKey, MediaSessionConstants.TARGET_PLAYLIST_AUTO)
+            var targetPlaylist: Playlist? = if (targetPlaylistId != MediaSessionConstants.TARGET_PLAYLIST_AUTO) {
+                database.playlist(targetPlaylistId).first()
+            } else {
+                null
+            }
+
+            if (targetPlaylist == null) {
+                val carFavoritesName = getString(R.string.car_favorites)
+                val existing = database.playlistEntitiesByNameAsc().find { it.name.equals(carFavoritesName, ignoreCase = true) }
+                targetPlaylist = if (existing != null) {
+                    database.playlist(existing.id).first()
+                } else {
+                    val newPlaylist = PlaylistEntity(
+                        name = carFavoritesName,
+                        bookmarkedAt = LocalDateTime.now(),
+                        isEditable = true,
+                    )
+                    database.insert(newPlaylist)
+                    database.playlist(newPlaylist.id).first()
+                }
+            }
+
             if (targetPlaylist != null) {
                 val addToPlaylistPosition =
                     dataStore
@@ -2349,9 +2371,17 @@ class MusicService :
                         .toEnum(AddToPlaylistPosition.BEGINNING)
                 database.addSongsToPlaylist(
                     targetPlaylist,
-                    listOf(currentSong.id to null),
+                    listOf(songId to null),
                     prepend = addToPlaylistPosition.prepend,
                 )
+                Handler(Looper.getMainLooper()).post {
+                    Toast
+                        .makeText(
+                            this@MusicService,
+                            getString(R.string.added_to_playlist, targetPlaylist.playlist.name),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                }
             }
         }
     }

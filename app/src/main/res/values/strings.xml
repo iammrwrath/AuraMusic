@@ -391,4 +391,14 @@
     <string name="volume_boost_desc">Amplifies audio output for car stereos, Android Auto, and quiet head units. Includes soft-knee anti-clipping limiter.</string>
     <string name="volume_boost_disabled">Off (0.0 dB)</string>
     <string name="volume_boost_db">+%1$.1f dB</string>
+    <string name="added_to_playlist">Added to %1$s</string>
+    <string name="car_favorites">Car Favorites</string>
+    <string name="android_auto_playlist_sort">Playlist Sort Order</string>
+    <string name="android_auto_playlist_sort_desc">Controls default order of playlists in Android Auto</string>
+    <string name="android_auto_show_sort_folders">Show Navigation Folders</string>
+    <string name="android_auto_show_sort_folders_desc">Displays Recently Modified, Alphabetical, and By Letter folders in Android Auto</string>
+    <string name="recently_modified">Recently Modified</string>
+    <string name="alphabetical_az">Alphabetical (A–Z)</string>
+    <string name="by_letter">By Letter (A–Z)</string>
+    <string name="all">All</string>
 </resources>

@@ -62,9 +62,14 @@ import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.plus
 import javax.inject.Inject
+import com.metrolist.music.constants.AndroidAutoPlaylistSortDescendingKey
+import com.metrolist.music.constants.AndroidAutoPlaylistSortTypeKey
 import com.metrolist.music.constants.AndroidAutoSectionsOrderKey
+import com.metrolist.music.constants.AndroidAutoShowSortFoldersKey
 import com.metrolist.music.constants.AndroidAutoYouTubePlaylistsKey
 import com.metrolist.music.constants.AutoRadioQueueKey
+import com.metrolist.music.constants.PlaylistSortType
+import com.metrolist.music.extensions.toEnum
 import com.metrolist.music.playback.queues.ListQueue
 import com.metrolist.music.playback.queues.YouTubeQueue
 import com.metrolist.music.ui.screens.settings.AndroidAutoSection
@@ -450,6 +455,23 @@ constructor(
             parentId == MusicService.PLAYLIST ->
                 loadPlaylistContainers(request)
 
+            parentId == "${MusicService.PLAYLIST}/_sort_updated" ->
+                loadSortedPlaylists(PlaylistSortType.LAST_UPDATED, descending = true, request)
+
+            parentId == "${MusicService.PLAYLIST}/_sort_alpha" ->
+                loadSortedPlaylists(PlaylistSortType.NAME, descending = false, request)
+
+            parentId == "${MusicService.PLAYLIST}/_by_letter" ->
+                loadLetterFolders(request)
+
+            parentId.startsWith("${MusicService.PLAYLIST}/_letter/") -> {
+                val letter = parentId.removePrefix("${MusicService.PLAYLIST}/_letter/")
+                loadPlaylistsByLetter(letter, request)
+            }
+
+            parentId.startsWith("${MusicService.PLAYLIST}/") ->
+                loadPlaylistChildren(parentId, request)
+
             parentId == MusicService.SONG ->
                 database.songsByCreateDateAsc(request.limit, request.offset)
                     .map { it.toMediaItem(parentId) }
@@ -468,49 +490,159 @@ constructor(
                     request.offset,
                 ).map { it.toMediaItem(parentId) }
 
-            parentId.startsWith("${MusicService.PLAYLIST}/") ->
-                loadPlaylistChildren(parentId, request)
-
             else -> null
         }
     }
 
     private suspend fun loadPlaylistContainers(request: AndroidAutoPageRequest): List<MediaItem> {
+        val showSortFolders = context.dataStore.get(AndroidAutoShowSortFoldersKey, true)
+        val headerItems = buildList {
+            val likedSongCount = database.likedSongsCount().first()
+            val downloadedSongCount = downloadUtil.downloads.value.size
+            add(
+                browsableMediaItem(
+                    "${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}",
+                    context.getString(R.string.liked_songs),
+                    context.resources.getQuantityString(R.plurals.n_song, likedSongCount, likedSongCount),
+                    drawableUri(R.drawable.favorite),
+                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                ),
+            )
+            add(
+                browsableMediaItem(
+                    "${MusicService.PLAYLIST}/${PlaylistEntity.DOWNLOADED_PLAYLIST_ID}",
+                    context.getString(R.string.downloaded_songs),
+                    context.resources.getQuantityString(
+                        R.plurals.n_song,
+                        downloadedSongCount,
+                        downloadedSongCount,
+                    ),
+                    drawableUri(R.drawable.download),
+                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                ),
+            )
+            if (showSortFolders) {
+                add(
+                    browsableMediaItem(
+                        "${MusicService.PLAYLIST}/_sort_updated",
+                        context.getString(R.string.recently_modified),
+                        null,
+                        drawableUri(R.drawable.history),
+                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                    ),
+                )
+                add(
+                    browsableMediaItem(
+                        "${MusicService.PLAYLIST}/_sort_alpha",
+                        context.getString(R.string.alphabetical_az),
+                        null,
+                        drawableUri(R.drawable.list),
+                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                    ),
+                )
+                add(
+                    browsableMediaItem(
+                        "${MusicService.PLAYLIST}/_by_letter",
+                        context.getString(R.string.by_letter),
+                        null,
+                        drawableUri(R.drawable.queue_music),
+                        MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+                    ),
+                )
+            }
+        }
+
+        val leadingCount = headerItems.size
         val builtInItems =
-            if (request.offset < 2 && request.limit > 0) {
-                val likedSongCount = database.likedSongsCount().first()
-                val downloadedSongCount = downloadUtil.downloads.value.size
-                listOf(
-                    browsableMediaItem(
-                        "${MusicService.PLAYLIST}/${PlaylistEntity.LIKED_PLAYLIST_ID}",
-                        context.getString(R.string.liked_songs),
-                        context.resources.getQuantityString(R.plurals.n_song, likedSongCount, likedSongCount),
-                        drawableUri(R.drawable.favorite),
-                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                    ),
-                    browsableMediaItem(
-                        "${MusicService.PLAYLIST}/${PlaylistEntity.DOWNLOADED_PLAYLIST_ID}",
-                        context.getString(R.string.downloaded_songs),
-                        context.resources.getQuantityString(
-                            R.plurals.n_song,
-                            downloadedSongCount,
-                            downloadedSongCount,
-                        ),
-                        drawableUri(R.drawable.download),
-                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                    ),
-                ).drop(request.offset).take(request.limit)
+            if (request.offset < leadingCount && request.limit > 0) {
+                headerItems.drop(request.offset).take(request.limit)
             } else {
                 emptyList()
             }
-        val playlistRequest = request.afterLeadingItems(2)
+
+        val playlistRequest = request.afterLeadingItems(leadingCount)
         val playlists =
             if (playlistRequest.limit == 0) {
                 emptyList()
             } else {
-                database.playlistsByCreateDateAsc(playlistRequest.limit, playlistRequest.offset)
+                val sortType = context.dataStore.get(AndroidAutoPlaylistSortTypeKey, PlaylistSortType.LAST_UPDATED.name)
+                    .toEnum(PlaylistSortType.LAST_UPDATED)
+                val descending = context.dataStore.get(
+                    AndroidAutoPlaylistSortDescendingKey,
+                    sortType != PlaylistSortType.NAME,
+                )
+                database.playlistsSorted(sortType, descending, playlistRequest.limit, playlistRequest.offset)
             }
+
         return builtInItems + playlists.map { playlist ->
+            browsableMediaItem(
+                "${MusicService.PLAYLIST}/${playlist.id}",
+                playlist.playlist.name,
+                context.resources.getQuantityString(R.plurals.n_song, playlist.songCount, playlist.songCount),
+                playlist.thumbnails.firstOrNull()?.toUri(),
+                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+            )
+        }
+    }
+
+    private suspend fun loadSortedPlaylists(
+        sortType: PlaylistSortType,
+        descending: Boolean,
+        request: AndroidAutoPageRequest,
+    ): List<MediaItem> {
+        val playlists = database.playlistsSorted(sortType, descending, request.limit, request.offset)
+        return playlists.map { playlist ->
+            browsableMediaItem(
+                "${MusicService.PLAYLIST}/${playlist.id}",
+                playlist.playlist.name,
+                context.resources.getQuantityString(R.plurals.n_song, playlist.songCount, playlist.songCount),
+                playlist.thumbnails.firstOrNull()?.toUri(),
+                MediaMetadata.MEDIA_TYPE_PLAYLIST,
+            )
+        }
+    }
+
+    private suspend fun loadLetterFolders(request: AndroidAutoPageRequest): List<MediaItem> {
+        val allPlaylists = database.playlistEntitiesByNameAsc().filter { it.bookmarkedAt != null }
+        val grouped = allPlaylists.groupBy { playlist ->
+            val first = playlist.name.trim().firstOrNull()?.uppercaseChar()
+            if (first != null && first in 'A'..'Z') first.toString() else "#"
+        }
+        val sortedKeys = grouped.keys.sortedWith { a, b ->
+            when {
+                a == "#" -> 1
+                b == "#" -> -1
+                else -> a.compareTo(b)
+            }
+        }
+        val pagedKeys = sortedKeys.drop(request.offset).take(request.limit)
+        return pagedKeys.map { letter ->
+            val count = grouped[letter]?.size ?: 0
+            browsableMediaItem(
+                "${MusicService.PLAYLIST}/_letter/$letter",
+                letter,
+                context.resources.getQuantityString(R.plurals.n_playlist, count, count),
+                drawableUri(R.drawable.queue_music),
+                MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS,
+            )
+        }
+    }
+
+    private suspend fun loadPlaylistsByLetter(
+        letter: String,
+        request: AndroidAutoPageRequest,
+    ): List<MediaItem> {
+        val allPlaylists = database.playlistsByNameAsc(Int.MAX_VALUE, 0)
+        val filtered = allPlaylists.filter { playlist ->
+            val first = playlist.playlist.name.trim().firstOrNull()?.uppercaseChar()
+            if (letter == "#") {
+                first == null || first !in 'A'..'Z'
+            } else {
+                first?.toString() == letter.uppercase()
+            }
+        }
+        val paged = filtered.drop(request.offset).take(request.limit)
+        return paged.map { playlist ->
             browsableMediaItem(
                 "${MusicService.PLAYLIST}/${playlist.id}",
                 playlist.playlist.name,

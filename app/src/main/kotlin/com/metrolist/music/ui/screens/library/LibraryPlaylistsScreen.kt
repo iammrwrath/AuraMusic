@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.only
@@ -89,6 +90,7 @@ import com.metrolist.music.constants.ShowUploadedPlaylistKey
 import com.metrolist.music.constants.YtmSyncKey
 import com.metrolist.music.db.entities.Playlist
 import com.metrolist.music.db.entities.PlaylistEntity
+import com.metrolist.music.ui.component.ChipsRow
 import com.metrolist.music.ui.component.CreatePlaylistDialog
 import com.metrolist.music.ui.component.LibrarySearchEmptyPlaceholder
 import com.metrolist.music.ui.component.LibrarySearchHeader
@@ -173,14 +175,33 @@ fun LibraryPlaylistsScreen(
     val playlists by viewModel.allPlaylists.collectAsStateWithLifecycle()
 
     var isSearchActive by rememberSaveable { mutableStateOf(false) }
+    var selectedLetter by rememberSaveable { mutableStateOf<String?>(null) }
+    val allLabel = stringResource(R.string.all)
+    val letterChips = remember(allLabel) {
+        listOf("ALL" to allLabel) +
+            ('A'..'Z').map { it.toString() to it.toString() } +
+            listOf("#" to "#")
+    }
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val normalizedQuery = remember(searchQuery) { searchQuery.normalizeForSearch() }
-    val filteredPlaylists = remember(playlists, normalizedQuery) {
-        if (normalizedQuery.isBlank()) {
+    val filteredPlaylists = remember(playlists, normalizedQuery, selectedLetter) {
+        val base = if (normalizedQuery.isBlank()) {
             playlists
         } else {
             playlists.filter { playlist ->
                 matchesNormalizedQuery(normalizedQuery, playlist.playlist.name)
+            }
+        }
+        if (selectedLetter == null) {
+            base
+        } else {
+            base.filter { playlist ->
+                val first = playlist.playlist.name.trim().firstOrNull()?.uppercaseChar()
+                if (selectedLetter == "#") {
+                    first == null || first !in 'A'..'Z'
+                } else {
+                    first?.toString() == selectedLetter
+                }
             }
         }
     }
@@ -243,13 +264,13 @@ fun LibraryPlaylistsScreen(
     val (showTop) = rememberPreference(ShowTopPlaylistKey, true)
     val (showUploaded) = rememberPreference(ShowUploadedPlaylistKey, true)
     val (showCached) = rememberPreference(ShowCachedPlaylistKey, true)
-    val showLikedPlaylist = showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
+    val showLikedPlaylist = selectedLetter == null && showLiked && matchesNormalizedQuery(normalizedQuery, likedPlaylist.playlist.name)
     val showDownloadedPlaylist =
-        showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
-    val showCachedPlaylists = showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
-    val showTopPlaylists = showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
+        selectedLetter == null && showDownloaded && matchesNormalizedQuery(normalizedQuery, downloadPlaylist.playlist.name)
+    val showCachedPlaylists = selectedLetter == null && showCached && matchesNormalizedQuery(normalizedQuery, cachedPlaylist.playlist.name)
+    val showTopPlaylists = selectedLetter == null && showTop && matchesNormalizedQuery(normalizedQuery, topPlaylist.playlist.name)
     val showUploadedPlaylists =
-        showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
+        selectedLetter == null && showUploaded && matchesNormalizedQuery(normalizedQuery, uploadedPlaylist.playlist.name)
 
     val visibleResults = remember(
         filteredPlaylists,
@@ -373,87 +394,98 @@ fun LibraryPlaylistsScreen(
     }
 
     val headerContent = @Composable {
-        LibrarySearchHeader(
-            isSearchActive = isSearchActive,
-            searchQuery = searchQuery,
-            onSearchQueryChange = viewModel::updateSearchQuery,
-            onBack = {
-                isSearchActive = false
-                viewModel.updateSearchQuery("")
-            },
-            keyboardController = keyboardController,
-            modifier = Modifier.padding(start = 16.dp),
-        ) {
-            SortHeader(
-                sortType = sortType,
-                sortDescending = sortDescending,
-                onSortTypeChange = onSortTypeChange,
-                onSortDescendingChange = onSortDescendingChange,
-                sortTypeText = { sortType ->
-                    when (sortType) {
-                        PlaylistSortType.CREATE_DATE -> R.string.sort_by_create_date
-                        PlaylistSortType.NAME -> R.string.sort_by_name
-                        PlaylistSortType.SONG_COUNT -> R.string.sort_by_song_count
-                        PlaylistSortType.LAST_UPDATED -> R.string.sort_by_last_updated
-                    }
+        Column(modifier = Modifier.fillMaxWidth()) {
+            LibrarySearchHeader(
+                isSearchActive = isSearchActive,
+                searchQuery = searchQuery,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                onBack = {
+                    isSearchActive = false
+                    viewModel.updateSearchQuery("")
                 },
-            )
-
-            Spacer(Modifier.weight(1f))
-
-            Text(
-                text = pluralStringResource(
-                    R.plurals.n_playlist,
-                    visibleResults.count { !it.autoPlaylist },
-                    visibleResults.count { !it.autoPlaylist },
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                fontFamily = if (nothingTheme) ndotFontFamily else null,
-                color = MaterialTheme.colorScheme.secondary,
-            )
-
-            IconButton(
-                onClick = { m3uPickerLauncher.launch("*/*") },
-                modifier = Modifier.padding(start = 4.dp).size(40.dp),
+                keyboardController = keyboardController,
+                modifier = Modifier.padding(start = 16.dp),
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.upload),
-                    contentDescription = stringResource(R.string.import_m3u_playlist),
+                SortHeader(
+                    sortType = sortType,
+                    sortDescending = sortDescending,
+                    onSortTypeChange = onSortTypeChange,
+                    onSortDescendingChange = onSortDescendingChange,
+                    sortTypeText = { sortType ->
+                        when (sortType) {
+                            PlaylistSortType.CREATE_DATE -> R.string.sort_by_create_date
+                            PlaylistSortType.NAME -> R.string.sort_by_name
+                            PlaylistSortType.SONG_COUNT -> R.string.sort_by_song_count
+                            PlaylistSortType.LAST_UPDATED -> R.string.sort_by_last_updated
+                        }
+                    },
                 )
+
+                Spacer(Modifier.weight(1f))
+
+                Text(
+                    text = pluralStringResource(
+                        R.plurals.n_playlist,
+                        visibleResults.count { !it.autoPlaylist },
+                        visibleResults.count { !it.autoPlaylist },
+                    ),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontFamily = if (nothingTheme) ndotFontFamily else null,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+
+                IconButton(
+                    onClick = { m3uPickerLauncher.launch("*/*") },
+                    modifier = Modifier.padding(start = 4.dp).size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.upload),
+                        contentDescription = stringResource(R.string.import_m3u_playlist),
+                    )
+                }
+
+                IconButton(
+                    onClick = { isSearchActive = true },
+                    modifier = Modifier.padding(start = 4.dp).size(40.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.search),
+                        contentDescription = stringResource(R.string.search),
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        onViewTypeChange(viewType.toggle())
+                    },
+                    modifier = Modifier.padding(end = 8.dp).size(40.dp),
+                ) {
+                    Icon(
+                        painter =
+                        painterResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.drawable.list
+                                LibraryViewType.GRID -> R.drawable.grid_view
+                            },
+                        ),
+                        contentDescription = stringResource(
+                            when (viewType) {
+                                LibraryViewType.LIST -> R.string.switch_to_grid_view
+                                LibraryViewType.GRID -> R.string.switch_to_list_view
+                            },
+                        ),
+                    )
+                }
             }
 
-            IconButton(
-                onClick = { isSearchActive = true },
-                modifier = Modifier.padding(start = 4.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.search),
-                    contentDescription = stringResource(R.string.search),
-                )
-            }
-
-            IconButton(
-                onClick = {
-                    onViewTypeChange(viewType.toggle())
+            ChipsRow(
+                chips = letterChips,
+                currentValue = selectedLetter ?: "ALL",
+                onValueUpdate = { letter ->
+                    selectedLetter = if (letter == "ALL" || selectedLetter == letter) null else letter
                 },
-                modifier = Modifier.padding(end = 8.dp).size(40.dp),
-            ) {
-                Icon(
-                    painter =
-                    painterResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.drawable.list
-                            LibraryViewType.GRID -> R.drawable.grid_view
-                        },
-                    ),
-                    contentDescription = stringResource(
-                        when (viewType) {
-                            LibraryViewType.LIST -> R.string.switch_to_grid_view
-                            LibraryViewType.GRID -> R.string.switch_to_list_view
-                        },
-                    ),
-                )
-            }
+                modifier = Modifier.padding(bottom = 6.dp),
+            )
         }
     }
 

@@ -175,6 +175,9 @@ val ManualTransitionEnabledKey = booleanPreferencesKey("manualTransitionEnabled"
 val ManualTransitionDurationKey = floatPreferencesKey("manualTransitionDuration")
 val AndroidAutoLyricsKey = booleanPreferencesKey("androidAutoLyrics")
 val AndroidAutoLyricsTranslationKey = booleanPreferencesKey("androidAutoLyricsTranslation")
+val AndroidAutoPlaylistSortTypeKey = stringPreferencesKey("androidAutoPlaylistSortType")
+val AndroidAutoPlaylistSortDescendingKey = booleanPreferencesKey("androidAutoPlaylistSortDescending")
+val AndroidAutoShowSortFoldersKey = booleanPreferencesKey("androidAutoShowSortFolders")
 
 val MaxImageCacheSizeKey = intPreferencesKey("maxImageCacheSize")
 val MaxSongCacheSizeKey = intPreferencesKey("maxSongCacheSize")

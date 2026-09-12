@@ -32,6 +32,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.innertube.YouTube
@@ -102,6 +104,7 @@ fun AddToPlaylistDialogOnline(
     onSongChange: (String) -> Unit = {},
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
     val coroutineScope = rememberCoroutineScope()
     val viewStateMap = remember { mutableStateMapOf<String, ItemsPage?>() }
@@ -352,6 +355,13 @@ fun AddToPlaylistDialogOnline(
                                     resolvedSongIds.filterNotNull().map { it to null },
                                     prepend = addToPlaylistPosition.prepend,
                                 )
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.added_to_playlist, playlist.playlist.name),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
                             } finally {
                                 withContext(Dispatchers.Main) {
                                     onProgressStart(false)
@@ -471,6 +481,13 @@ fun AddToPlaylistDialogOnline(
                                 }.map { it to null },
                                 prepend = addToPlaylistPosition.prepend,
                             )
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.added_to_playlist, selectedPlaylist!!.playlist.name),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
                             onDismiss()
                         }
                     }
@@ -487,6 +504,13 @@ fun AddToPlaylistDialogOnline(
                                 songIds!!.map { it to null },
                                 prepend = addToPlaylistPosition.prepend,
                             )
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.added_to_playlist, selectedPlaylist!!.playlist.name),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
                             onDismiss()
                         }
                     }

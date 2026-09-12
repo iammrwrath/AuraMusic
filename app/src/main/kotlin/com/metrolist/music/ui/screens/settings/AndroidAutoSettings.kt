@@ -47,16 +47,21 @@ import com.metrolist.music.LocalPlayerAwareWindowInsets
 import com.metrolist.music.R
 import com.metrolist.music.constants.AndroidAutoLyricsKey
 import com.metrolist.music.constants.AndroidAutoLyricsTranslationKey
+import com.metrolist.music.constants.AndroidAutoPlaylistSortTypeKey
 import com.metrolist.music.constants.AndroidAutoSearchLocalLimitKey
 import com.metrolist.music.constants.AndroidAutoSectionsOrderKey
+import com.metrolist.music.constants.AndroidAutoShowSortFoldersKey
 import com.metrolist.music.constants.AndroidAutoTargetPlaylistKey
 import com.metrolist.music.constants.AndroidAutoYouTubePlaylistsKey
+import com.metrolist.music.constants.PlaylistSortType
 import com.metrolist.music.constants.VolumeBoostKey
 import com.metrolist.music.constants.MediaSessionConstants
+import com.metrolist.music.ui.component.EnumDialog
 import com.metrolist.music.ui.component.IconButton
 import com.metrolist.music.ui.component.Material3SettingsGroup
 import com.metrolist.music.ui.component.Material3SettingsItem
 import com.metrolist.music.ui.utils.backToMain
+import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
 import kotlinx.coroutines.flow.map
 import sh.calvin.reorderable.ReorderableItem
@@ -121,6 +126,16 @@ fun AndroidAutoSettings(
         defaultValue = MediaSessionConstants.TARGET_PLAYLIST_AUTO
     )
 
+    val (playlistSortType, onPlaylistSortTypeChange) = rememberEnumPreference(
+        key = AndroidAutoPlaylistSortTypeKey,
+        defaultValue = PlaylistSortType.LAST_UPDATED,
+    )
+
+    val (showSortFolders, onShowSortFoldersChange) = rememberPreference(
+        key = AndroidAutoShowSortFoldersKey,
+        defaultValue = true,
+    )
+
     val (androidAutoSearchLocalLimit, onAndroidAutoSearchLocalLimitChange) = rememberPreference(
         AndroidAutoSearchLocalLimitKey,
         defaultValue = 75
@@ -161,7 +176,7 @@ fun AndroidAutoSettings(
 
     val playlistLabels: @Composable (String) -> String = { id ->
         if (id == MediaSessionConstants.TARGET_PLAYLIST_AUTO) {
-            stringResource(R.string.android_auto_target_playlist_auto)
+            "${stringResource(R.string.android_auto_target_playlist_auto)} (${stringResource(R.string.car_favorites)})"
         } else {
             userPlaylists.find { it.id == id }?.name ?: id
         }
@@ -259,6 +274,28 @@ fun AndroidAutoSettings(
 
         // Quick-add destination playlist
         var showTargetPlaylistDialog by remember { mutableStateOf(false) }
+        var showPlaylistSortDialog by remember { mutableStateOf(false) }
+
+        if (showPlaylistSortDialog) {
+            EnumDialog(
+                onDismiss = { showPlaylistSortDialog = false },
+                onSelect = {
+                    onPlaylistSortTypeChange(it)
+                    showPlaylistSortDialog = false
+                },
+                title = stringResource(R.string.android_auto_playlist_sort),
+                current = playlistSortType,
+                values = PlaylistSortType.entries,
+                valueText = {
+                    when (it) {
+                        PlaylistSortType.CREATE_DATE -> stringResource(R.string.sort_by_create_date)
+                        PlaylistSortType.NAME -> stringResource(R.string.sort_by_name)
+                        PlaylistSortType.SONG_COUNT -> stringResource(R.string.sort_by_song_count)
+                        PlaylistSortType.LAST_UPDATED -> stringResource(R.string.sort_by_last_updated)
+                    }
+                },
+            )
+        }
 
         if (showTargetPlaylistDialog) {
             androidx.compose.material3.AlertDialog(
@@ -301,13 +338,49 @@ fun AndroidAutoSettings(
         }
         
         Material3SettingsGroup(
-            title = stringResource(R.string.android_auto_target_playlist),
+            title = stringResource(R.string.playlists),
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.playlist_add),
                     title = { Text(stringResource(R.string.android_auto_target_playlist)) },
                     description = { Text(playlistLabels(targetPlaylist)) },
                     onClick = { showTargetPlaylistDialog = true }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.list),
+                    title = { Text(stringResource(R.string.android_auto_playlist_sort)) },
+                    description = {
+                        Text(
+                            when (playlistSortType) {
+                                PlaylistSortType.CREATE_DATE -> stringResource(R.string.sort_by_create_date)
+                                PlaylistSortType.NAME -> stringResource(R.string.sort_by_name)
+                                PlaylistSortType.SONG_COUNT -> stringResource(R.string.sort_by_song_count)
+                                PlaylistSortType.LAST_UPDATED -> stringResource(R.string.sort_by_last_updated)
+                            }
+                        )
+                    },
+                    onClick = { showPlaylistSortDialog = true }
+                ),
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.library_music),
+                    title = { Text(stringResource(R.string.android_auto_show_sort_folders)) },
+                    description = { Text(stringResource(R.string.android_auto_show_sort_folders_desc)) },
+                    trailingContent = {
+                        Switch(
+                            checked = showSortFolders,
+                            onCheckedChange = onShowSortFoldersChange,
+                            thumbContent = {
+                                Icon(
+                                    painter = painterResource(
+                                        if (showSortFolders) R.drawable.check else R.drawable.close
+                                    ),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            }
+                        )
+                    },
+                    onClick = { onShowSortFoldersChange(!showSortFolders) }
                 )
             )
         )

@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.metrolist.innertube.utils.parseCookieString
@@ -88,6 +90,7 @@ fun AddToPlaylistDialog(
     onDismiss: () -> Unit,
     viewModel: PlaylistsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val database = LocalDatabase.current
     val syncUtils = LocalSyncUtils.current
     val coroutineScope = rememberCoroutineScope()
@@ -138,6 +141,13 @@ fun AddToPlaylistDialog(
             ids.forEach { songId ->
                 syncUtils.addToPlaylist(plist, targetPlaylist.id, songId)
             }
+        }
+        withContext(Dispatchers.Main) {
+            Toast.makeText(
+                context,
+                context.getString(R.string.added_to_playlist, targetPlaylist.playlist.name),
+                Toast.LENGTH_SHORT,
+            ).show()
         }
     }
 
