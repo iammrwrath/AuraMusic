@@ -1353,15 +1353,6 @@ class MusicService :
                 }
             }
         }
-
-        scope.launch {
-            while (isActive) {
-                delay(10.seconds)
-                if (cachedPersistentQueue && player.isPlaying) {
-                    saveQueueToDisk()
-                }
-            }
-        }
     }
 
     private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
