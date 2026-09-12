@@ -1,0 +1,18 @@
+--- a/app/src/main/kotlin/com/metrolist/music/playback/MusicService.kt
++++ b/app/src/main/kotlin/com/metrolist/music/playback/MusicService.kt
+@@ -1327,15 +1327,6 @@ class MusicService :
+                 }
+             }
+         }
+-
+-        scope.launch {
+-            while (isActive) {
+-                delay(10.seconds)
+-                if (cachedPersistentQueue && player.isPlaying) {
+-                    saveQueueToDisk()
+-                }
+-            }
+-        }
+     }
+
+     private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
