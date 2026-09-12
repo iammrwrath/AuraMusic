@@ -110,6 +110,7 @@ enum class AudioQuality {
     AUTO,
     LOW,
     HIGH,
+    MAX,
 }
 
 val AudioOffload = booleanPreferencesKey("enableOffload")
@@ -157,10 +158,21 @@ enum class AutomixMode {
     OFF,
     CROSSFADE,
     SMART_AUTOMIX,
+    NEURALMIX_FX,
+}
+
+enum class NeuralMixStyle {
+    BASS_SWAP,
+    FILTER_DISSOLVE,
+    NEURAL_SWEEP,
+    EQUAL_POWER,
 }
 
 val AutomixModeKey = stringPreferencesKey("automixMode")
 val AutomixBassSwapKey = booleanPreferencesKey("automixBassSwap")
+val NeuralMixStyleKey = stringPreferencesKey("neuralMixStyle")
+val ManualTransitionEnabledKey = booleanPreferencesKey("manualTransitionEnabled")
+val ManualTransitionDurationKey = floatPreferencesKey("manualTransitionDuration")
 val AndroidAutoLyricsKey = booleanPreferencesKey("androidAutoLyrics")
 val AndroidAutoLyricsTranslationKey = booleanPreferencesKey("androidAutoLyricsTranslation")
 

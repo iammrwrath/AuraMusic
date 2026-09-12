@@ -130,6 +130,11 @@ import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
 import com.metrolist.music.constants.GaplessPlaybackKey
+import com.metrolist.music.constants.ManualTransitionDurationKey
+import com.metrolist.music.constants.ManualTransitionEnabledKey
+import com.metrolist.music.constants.NeuralMixStyle
+import com.metrolist.music.constants.NeuralMixStyleKey
+import com.metrolist.music.playback.audio.NeuralMixAudioProcessor
 import com.metrolist.music.constants.DisableLoadMoreWhenRepeatAllKey
 import com.metrolist.music.constants.DiscordActivityNameKey
 import com.metrolist.music.constants.DiscordActivityTypeKey
@@ -329,6 +334,9 @@ class MusicService :
     private var crossfadeMessage: PlayerMessage? = null
     private var automixMode: AutomixMode = AutomixMode.SMART_AUTOMIX
     private var automixBassSwap: Boolean = true
+    private var neuralMixStyle: NeuralMixStyle = NeuralMixStyle.BASS_SWAP
+    private var manualTransitionEnabled: Boolean = true
+    private var manualTransitionDuration: Float = 2.5f
 
     private var carLyricsEnabled: Boolean = true
     private var carLyricsActive: Boolean = true
@@ -453,6 +461,7 @@ class MusicService :
     private var openedAudioEffectSessionId: Int = C.AUDIO_SESSION_ID_UNSET
     private val playerNormalizationProcessors = HashMap<Player, VolumeNormalizationAudioProcessor>()
     private val playerEqualizerProcessors = HashMap<Player, CustomEqualizerAudioProcessor>()
+    private val playerNeuralMixProcessors = HashMap<Player, NeuralMixAudioProcessor>()
 
     private var loudnessSetupJob: Job? = null
     private var loudnessSetupGeneration: Long = 0L
@@ -1209,11 +1218,22 @@ class MusicService :
                 AutomixMode.SMART_AUTOMIX
             }
             val bassSwap = prefs[AutomixBassSwapKey] ?: true
-            mode to bassSwap
+            val styleStr = prefs[NeuralMixStyleKey]
+            val style = if (styleStr != null) {
+                runCatching { NeuralMixStyle.valueOf(styleStr) }.getOrDefault(NeuralMixStyle.BASS_SWAP)
+            } else {
+                NeuralMixStyle.BASS_SWAP
+            }
+            val manualEnabled = prefs[ManualTransitionEnabledKey] ?: true
+            val manualDuration = prefs[ManualTransitionDurationKey] ?: 2.5f
+            AutomixConfig(mode, bassSwap, style, manualEnabled, manualDuration)
         }.distinctUntilChanged()
-            .collect(scope) { (mode, bassSwap) ->
-                automixMode = mode
-                automixBassSwap = bassSwap
+            .collect(scope) { config ->
+                automixMode = config.mode
+                automixBassSwap = config.bassSwap
+                neuralMixStyle = config.style
+                manualTransitionEnabled = config.manualEnabled
+                manualTransitionDuration = config.manualDuration
             }
 
         dataStore.data.map { it[AndroidAutoLyricsKey] ?: true }
@@ -1364,6 +1384,14 @@ class MusicService :
         }
     }
 
+    private data class AutomixConfig(
+        val mode: AutomixMode,
+        val bassSwap: Boolean,
+        val style: NeuralMixStyle,
+        val manualEnabled: Boolean,
+        val manualDuration: Float,
+    )
+
     private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
         val normalizationProcessor = VolumeNormalizationAudioProcessor().also {
             it.enabled = cachedNormalizationEnabled
@@ -1371,6 +1399,7 @@ class MusicService :
             cachedNormalizationGainMb?.let { gain -> it.setTargetGain(gain) }
         }
         val eqProcessor = CustomEqualizerAudioProcessor()
+        val neuralMixProcessor = NeuralMixAudioProcessor()
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
 
@@ -1392,7 +1421,7 @@ class MusicService :
             ExoPlayer
                 .Builder(this)
                 .setMediaSourceFactory(createMediaSourceFactory())
-                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, silenceProcessor, useAudioTrackPlaybackParams))
+                .setRenderersFactory(createRenderersFactory(normalizationProcessor, eqProcessor, neuralMixProcessor, silenceProcessor, useAudioTrackPlaybackParams))
                 .setLoadControl(
                     // Start playback once 500ms is buffered for instant audio playback response.
                     // Prioritize time over size to guarantee fast start and low memory footprint across all devices.
@@ -1424,7 +1453,16 @@ class MusicService :
         playerNormalizationProcessors[player] = normalizationProcessor
         playerSilenceProcessors[player] = silenceProcessor
         playerEqualizerProcessors[player] = eqProcessor
+        playerNeuralMixProcessors[player] = neuralMixProcessor
         equalizerService.addAudioProcessor(eqProcessor)
+
+        // Lock maximum audio bitrate when Studio Max / Lossless quality is chosen
+        if (::audioQuality.isInitialized && audioQuality == com.metrolist.music.constants.AudioQuality.MAX) {
+            player.trackSelectionParameters = player.trackSelectionParameters
+                .buildUpon()
+                .setMaxAudioBitrate(Int.MAX_VALUE)
+                .build()
+        }
 
         if (prefs != null) {
             val offload = prefs[AudioOffload] ?: false
@@ -3982,6 +4020,7 @@ class MusicService :
     private fun createRenderersFactory(
         normalizationProcessor: VolumeNormalizationAudioProcessor,
         eqProcessor: CustomEqualizerAudioProcessor,
+        neuralMixProcessor: NeuralMixAudioProcessor,
         silenceProcessor: SilenceDetectorAudioProcessor,
         useAudioTrackPlaybackParams: Boolean,
     ) = object : DefaultRenderersFactory(this) {
@@ -4035,13 +4074,14 @@ class MusicService :
             enableAudioTrackPlaybackParams: Boolean,
         ) = DefaultAudioSink
             .Builder(this@MusicService)
-            .setEnableFloatOutput(enableFloatOutput)
+            .setEnableFloatOutput(true)
             .setEnableAudioTrackPlaybackParams(useAudioTrackPlaybackParams)
             .setAudioProcessorChain(
                 DefaultAudioSink.DefaultAudioProcessorChain(
                     arrayOf(
                         normalizationProcessor,
                         eqProcessor,
+                        neuralMixProcessor,
                         silenceProcessor,
                     ),
                     SilenceSkippingAudioProcessor(2_000_000, 20_000, 256),
@@ -4407,7 +4447,9 @@ class MusicService :
             }
 
             MusicWidgetReceiver.ACTION_NEXT -> {
-                player.seekToNext()
+                if (!triggerManualTransition()) {
+                    player.seekToNext()
+                }
                 updateWidgetUI(player.isPlaying)
             }
 
@@ -4902,10 +4944,28 @@ class MusicService :
         }
     }
 
-    private fun startCrossfade() {
+    fun triggerManualTransition(): Boolean {
+        if (automixMode == AutomixMode.OFF && !crossfadeEnabled) return false
+        if (!manualTransitionEnabled) return false
+        if (isCrossfading) return false
+        if (!player.isPlaying) return false
+        val targetIndex =
+            if (player.repeatMode == Player.REPEAT_MODE_ONE) {
+                player.currentMediaItemIndex
+            } else {
+                player.nextMediaItemIndex
+            }
+        if (targetIndex == C.INDEX_UNSET) return false
+        if ((crossfadeGapless || gaplessPlayback) && isNextItemGapless()) return false
+
+        crossfadeMessage?.cancel()
+        crossfadeMessage = null
+        startCrossfade(isManual = true)
+        return true
+    }
+
+    private fun startCrossfade(isManual: Boolean = false) {
         if (isCrossfading) return
-
-
 
         // Preserve player state before creating the secondary player
         // Use in-memory player state to avoid blocking DataStore disk reads during playback transition
@@ -4953,7 +5013,7 @@ class MusicService :
             return
         }
 
-        performCrossfadeSwap()
+        performCrossfadeSwap(isManual)
 
         if (savedShuffleEnabled) {
             val shufflePlaylistFirst = cachedShufflePlaylistFirst
@@ -4961,7 +5021,7 @@ class MusicService :
         }
     }
 
-    private fun performCrossfadeSwap() {
+    private fun performCrossfadeSwap(isManual: Boolean = false) {
         isCrossfading = true
         val nextPlayer = secondaryPlayer ?: return
         val currentPlayer = player
@@ -5027,6 +5087,8 @@ class MusicService :
                     trackDurationMs = fadingPlayer?.duration ?: player.duration,
                     configuredDurationSec = crossfadeDuration / 1000f,
                     mode = automixMode,
+                    isManual = isManual,
+                    manualDurationSec = manualTransitionDuration,
                 )
                 val duration = (baseDuration / speed).toLong().coerceAtLeast(500L)
                 val steps = 30
@@ -5049,11 +5111,22 @@ class MusicService :
                         progress = progress,
                         mode = automixMode,
                         bassSwap = automixBassSwap,
+                        style = neuralMixStyle,
+                    )
+                    val cutoffs = AutomixController.calculateFilterCutoffs(
+                        progress = progress,
+                        mode = automixMode,
+                        style = neuralMixStyle,
                     )
 
                     try {
                         player.volume = startVolume * fadeIn
                         fadingPlayer?.volume = startVolume * fadeOut
+
+                        playerNeuralMixProcessors[player]?.setCutoffs(cutoffs.incomingLowPass, cutoffs.incomingHighPass)
+                        fadingPlayer?.let { fp ->
+                            playerNeuralMixProcessors[fp]?.setCutoffs(cutoffs.outgoingLowPass, cutoffs.outgoingHighPass)
+                        }
                     } catch (e: Exception) {
                         break
                     }
@@ -5064,6 +5137,10 @@ class MusicService :
                 try {
                     fadingPlayer?.volume = 0f
                     player.volume = startVolume
+                    playerNeuralMixProcessors[player]?.resetToBypass()
+                    fadingPlayer?.let { fp ->
+                        playerNeuralMixProcessors[fp]?.resetToBypass()
+                    }
                 } catch (e: Exception) {
                 }
 
@@ -5072,7 +5149,9 @@ class MusicService :
     }
 
     private fun cleanupCrossfade(fadingPlayerSessionId: Int = C.AUDIO_SESSION_ID_UNSET) {
+        playerNeuralMixProcessors[player]?.resetToBypass()
         fadingPlayer?.let { previousPlayer ->
+            playerNeuralMixProcessors[previousPlayer]?.resetToBypass()
             previousPlayer.stop()
             previousPlayer.clearMediaItems()
             releaseExoPlayer(previousPlayer)
@@ -5091,6 +5170,7 @@ class MusicService :
     }
 
     private fun releaseExoPlayer(player: ExoPlayer) {
+        playerNeuralMixProcessors.remove(player)?.resetToBypass()
         playerNormalizationProcessors.remove(player)
         playerSilenceProcessors.remove(player)
         playerEqualizerProcessors.remove(player)?.let(equalizerService::removeAudioProcessor)

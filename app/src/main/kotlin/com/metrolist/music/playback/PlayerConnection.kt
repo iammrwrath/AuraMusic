@@ -421,6 +421,10 @@ class PlayerConnection(
                 castHandler.skipToNext()
                 return
             }
+            if (service.triggerManualTransition()) {
+                onSkipNext?.invoke()
+                return
+            }
             player.seekToNext()
             if (player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED) {
                 player.prepare()

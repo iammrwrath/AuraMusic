@@ -22,6 +22,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -143,6 +144,8 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AudioQuality
+import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
@@ -247,6 +250,10 @@ fun BottomSheetPlayer(
         key = PlayerButtonsStyleKey,
         defaultValue = PlayerButtonsStyle.DEFAULT,
     )
+    val audioQuality by rememberEnumPreference(
+        key = AudioQualityKey,
+        defaultValue = AudioQuality.AUTO,
+    )
     val isNothing = LocalNothingTheme.current
 
     val isSystemInDarkTheme = isSystemInDarkTheme()
@@ -325,6 +332,7 @@ fun BottomSheetPlayer(
 
     val playbackState by playerConnection.playbackState.collectAsState()
     val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
+    val currentFormat by playerConnection.currentFormat.collectAsStateWithLifecycle(initialValue = null)
     val currentSong by playerConnection.currentSong.collectAsStateWithLifecycle(initialValue = null)
     val automix by playerConnection.service.automixItems.collectAsStateWithLifecycle()
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
@@ -1122,6 +1130,73 @@ fun BottomSheetPlayer(
                                                         ).show()
                                                 },
                                             ),
+                                )
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = currentFormat != null,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        val format = currentFormat
+                        if (format != null) {
+                            val mimeType = format.mimeType.lowercase()
+                            val codecs = format.codecs.lowercase()
+                            val itag = format.itag
+                            val bitrateKbps = format.bitrate / 1000
+
+                            val codecName = when {
+                                mimeType.contains("flac") || codecs.contains("flac") -> "FLAC"
+                                itag == 251 || codecs.contains("opus") || mimeType.contains("opus") -> "Opus"
+                                itag == 140 || itag == 141 || codecs.contains("mp4a") || mimeType.contains("mp4a") || codecs.contains("aac") -> "AAC"
+                                else -> "Audio"
+                            }
+
+                            val isLosslessOrMax = audioQuality == AudioQuality.MAX || codecName == "FLAC" || bitrateKbps >= 256
+                            val badgeText = when {
+                                codecName == "FLAC" -> "FLAC • Lossless"
+                                isLosslessOrMax && codecName == "Opus" && bitrateKbps > 0 -> "Hi-Res Opus • $bitrateKbps kbps"
+                                isLosslessOrMax && codecName == "AAC" && bitrateKbps > 0 -> "HD AAC • $bitrateKbps kbps"
+                                bitrateKbps > 0 -> "$codecName • $bitrateKbps kbps"
+                                else -> codecName
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(top = 4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isLosslessOrMax) {
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                        } else {
+                                            TextBackgroundColor.copy(alpha = 0.08f)
+                                        }
+                                    )
+                                    .clickable {
+                                        bottomSheetPageState.show {
+                                            ShowMediaInfo(mediaMetadata.id)
+                                        }
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.graphic_eq),
+                                    contentDescription = null,
+                                    tint = if (isLosslessOrMax) MaterialTheme.colorScheme.primary else TextBackgroundColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(11.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = badgeText.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.4.sp,
+                                        color = if (isLosslessOrMax) MaterialTheme.colorScheme.primary else TextBackgroundColor.copy(alpha = 0.75f),
+                                    ),
                                 )
                             }
                         }

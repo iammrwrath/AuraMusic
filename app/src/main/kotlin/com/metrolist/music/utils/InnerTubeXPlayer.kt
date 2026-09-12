@@ -260,6 +260,7 @@ object InnerTubeXPlayer {
 
     private fun AudioQuality.toInnerTubeX(connectivityManager: ConnectivityManager): InnerTubeXAudioQuality =
         when (this) {
+            AudioQuality.MAX -> InnerTubeXAudioQuality.HIGH
             AudioQuality.HIGH -> InnerTubeXAudioQuality.HIGH
             AudioQuality.LOW -> InnerTubeXAudioQuality.LOW
             AudioQuality.AUTO ->

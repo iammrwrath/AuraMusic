@@ -50,6 +50,10 @@ import com.metrolist.music.constants.CrossfadeDurationKey
 import com.metrolist.music.constants.CrossfadeEnabledKey
 import com.metrolist.music.constants.CrossfadeGaplessKey
 import com.metrolist.music.constants.GaplessPlaybackKey
+import com.metrolist.music.constants.NeuralMixStyle
+import com.metrolist.music.constants.NeuralMixStyleKey
+import com.metrolist.music.constants.ManualTransitionEnabledKey
+import com.metrolist.music.constants.ManualTransitionDurationKey
 import com.metrolist.music.constants.AutoLoadMoreKey
 import com.metrolist.music.constants.AutoRadioQueueKey
 import com.metrolist.music.constants.AutoSkipNextOnErrorKey
@@ -129,6 +133,20 @@ fun PlayerSettings(
         defaultValue = true
     )
     var showAutomixModeDialog by remember { mutableStateOf(false) }
+    val (neuralMixStyle, onNeuralMixStyleChange) = rememberEnumPreference(
+        NeuralMixStyleKey,
+        defaultValue = NeuralMixStyle.BASS_SWAP
+    )
+    var showNeuralMixStyleDialog by remember { mutableStateOf(false) }
+
+    val (manualTransitionEnabled, onManualTransitionEnabledChange) = rememberPreference(
+        ManualTransitionEnabledKey,
+        defaultValue = true
+    )
+    val (manualTransitionDuration, onManualTransitionDurationChange) = rememberPreference(
+        ManualTransitionDurationKey,
+        defaultValue = 2.5f
+    )
     val (persistentQueue, onPersistentQueueChange) = rememberPreference(
         PersistentQueueKey,
         defaultValue = true
@@ -267,6 +285,7 @@ fun PlayerSettings(
             valueText = {
                 when (it) {
                     AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto)
+                    AudioQuality.MAX -> stringResource(R.string.audio_quality_max)
                     AudioQuality.HIGH -> stringResource(R.string.audio_quality_high)
                     AudioQuality.LOW -> stringResource(R.string.audio_quality_low)
                 }
@@ -304,6 +323,28 @@ fun PlayerSettings(
                     AutomixMode.OFF -> stringResource(R.string.automix_mode_off)
                     AutomixMode.CROSSFADE -> stringResource(R.string.automix_mode_crossfade)
                     AutomixMode.SMART_AUTOMIX -> stringResource(R.string.automix_mode_smart)
+                    AutomixMode.NEURALMIX_FX -> stringResource(R.string.automix_mode_neuralmix)
+                }
+            }
+        )
+    }
+
+    if (showNeuralMixStyleDialog) {
+        EnumDialog(
+            onDismiss = { showNeuralMixStyleDialog = false },
+            onSelect = {
+                onNeuralMixStyleChange(it)
+                showNeuralMixStyleDialog = false
+            },
+            title = stringResource(R.string.neuralmix_style),
+            current = neuralMixStyle,
+            values = NeuralMixStyle.values().toList(),
+            valueText = {
+                when (it) {
+                    NeuralMixStyle.BASS_SWAP -> stringResource(R.string.neuralmix_style_bass_swap)
+                    NeuralMixStyle.FILTER_DISSOLVE -> stringResource(R.string.neuralmix_style_filter_dissolve)
+                    NeuralMixStyle.NEURAL_SWEEP -> stringResource(R.string.neuralmix_style_neural_sweep)
+                    NeuralMixStyle.EQUAL_POWER -> stringResource(R.string.neuralmix_style_equal_power)
                 }
             }
         )
@@ -337,6 +378,7 @@ fun PlayerSettings(
                         Text(
                             when (audioQuality) {
                                 AudioQuality.AUTO -> stringResource(R.string.audio_quality_auto) + " • " + stringResource(R.string.audio_quality_auto_detail)
+                                AudioQuality.MAX -> stringResource(R.string.audio_quality_max) + " • " + stringResource(R.string.audio_quality_max_detail)
                                 AudioQuality.HIGH -> stringResource(R.string.audio_quality_high) + " • " + stringResource(R.string.audio_quality_high_detail)
                                 AudioQuality.LOW -> stringResource(R.string.audio_quality_low) + " • " + stringResource(R.string.audio_quality_low_detail)
                             }
@@ -374,6 +416,7 @@ fun PlayerSettings(
                                 AutomixMode.OFF -> stringResource(R.string.automix_mode_off)
                                 AutomixMode.CROSSFADE -> stringResource(R.string.automix_mode_crossfade)
                                 AutomixMode.SMART_AUTOMIX -> stringResource(R.string.automix_mode_smart)
+                                AutomixMode.NEURALMIX_FX -> stringResource(R.string.automix_mode_neuralmix)
                             }
                         )
                     },
@@ -395,6 +438,23 @@ fun PlayerSettings(
                             }
                         }
                     ))
+                    if (automixMode == AutomixMode.NEURALMIX_FX) {
+                        add(Material3SettingsItem(
+                            icon = painterResource(R.drawable.graphic_eq),
+                            title = { Text(stringResource(R.string.neuralmix_style)) },
+                            description = {
+                                Text(
+                                    when (neuralMixStyle) {
+                                        NeuralMixStyle.BASS_SWAP -> stringResource(R.string.neuralmix_style_bass_swap)
+                                        NeuralMixStyle.FILTER_DISSOLVE -> stringResource(R.string.neuralmix_style_filter_dissolve)
+                                        NeuralMixStyle.NEURAL_SWEEP -> stringResource(R.string.neuralmix_style_neural_sweep)
+                                        NeuralMixStyle.EQUAL_POWER -> stringResource(R.string.neuralmix_style_equal_power)
+                                    }
+                                )
+                            },
+                            onClick = { showNeuralMixStyleDialog = true }
+                        ))
+                    }
                     if (automixMode == AutomixMode.SMART_AUTOMIX) {
                         add(Material3SettingsItem(
                             icon = painterResource(R.drawable.graphic_eq),
@@ -416,6 +476,44 @@ fun PlayerSettings(
                                 )
                             },
                             onClick = { onAutomixBassSwapChange(!automixBassSwap) }
+                        ))
+                    }
+                    add(Material3SettingsItem(
+                        icon = painterResource(R.drawable.skip_next),
+                        title = { Text(stringResource(R.string.neuralmix_manual_transition)) },
+                        description = { Text(stringResource(R.string.neuralmix_manual_transition_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = manualTransitionEnabled,
+                                onCheckedChange = onManualTransitionEnabledChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (manualTransitionEnabled) R.drawable.check else R.drawable.close
+                                        ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
+                                }
+                            )
+                        },
+                        onClick = { onManualTransitionEnabledChange(!manualTransitionEnabled) }
+                    ))
+                    if (manualTransitionEnabled) {
+                        add(Material3SettingsItem(
+                            icon = painterResource(R.drawable.timer),
+                            title = { Text(stringResource(R.string.neuralmix_manual_duration)) },
+                            description = {
+                                Column {
+                                    Text(String.format(java.util.Locale.US, "%.1f s", manualTransitionDuration))
+                                    Slider(
+                                        value = manualTransitionDuration,
+                                        onValueChange = onManualTransitionDurationChange,
+                                        valueRange = 1f..5f,
+                                        steps = 7
+                                    )
+                                }
+                            }
                         ))
                     }
                     add(Material3SettingsItem(
