@@ -156,7 +156,7 @@ constructor(
         mediaSession: MediaSession,
         controller: MediaSession.ControllerInfo
     ): ListenableFuture<MediaItemsWithStartPosition> =
-        scope.future(Dispatchers.IO) {
+        scope.future(Dispatchers.Main) {
             // If the player already has items, resume at current index/position
             if (mediaSession.player.mediaItemCount > 0) {
                 val currentItems = List(mediaSession.player.mediaItemCount) { i ->
@@ -167,26 +167,28 @@ constructor(
                 return@future MediaItemsWithStartPosition(currentItems, currentIndex, currentPosition)
             }
 
-            // Otherwise, load user's liked songs or recent songs to resume playback immediately
-            val likedSongs = database.likedSongs(SongSortType.CREATE_DATE, descending = true).first()
-            if (likedSongs.isNotEmpty()) {
-                return@future MediaItemsWithStartPosition(
-                    likedSongs.map { it.toMediaItem() },
-                    0,
-                    C.TIME_UNSET
-                )
-            }
+            // Otherwise, load user's liked songs or recent songs on IO dispatcher to resume playback immediately
+            withContext(Dispatchers.IO) {
+                val likedSongs = database.likedSongs(SongSortType.CREATE_DATE, descending = true).first()
+                if (likedSongs.isNotEmpty()) {
+                    return@withContext MediaItemsWithStartPosition(
+                        likedSongs.map { it.toMediaItem() },
+                        0,
+                        C.TIME_UNSET
+                    )
+                }
 
-            val recentSongs = database.songsByCreateDateAsc().first()
-            if (recentSongs.isNotEmpty()) {
-                return@future MediaItemsWithStartPosition(
-                    recentSongs.map { it.toMediaItem() },
-                    0,
-                    C.TIME_UNSET
-                )
-            }
+                val recentSongs = database.songsByCreateDateAsc().first()
+                if (recentSongs.isNotEmpty()) {
+                    return@withContext MediaItemsWithStartPosition(
+                        recentSongs.map { it.toMediaItem() },
+                        0,
+                        C.TIME_UNSET
+                    )
+                }
 
-            MediaItemsWithStartPosition(emptyList(), 0, C.TIME_UNSET)
+                MediaItemsWithStartPosition(emptyList(), 0, C.TIME_UNSET)
+            }
         }
 
     override fun onGetLibraryRoot(
