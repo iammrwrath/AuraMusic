@@ -324,9 +324,7 @@ fun Thumbnail(
             visible = error == null,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier
-                .fillMaxSize()
-                .then(if (!isLandscape) Modifier.statusBarsPadding() else Modifier),
+            modifier = Modifier.fillMaxSize(),
         ) {
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -442,6 +440,7 @@ private fun ThumbnailHeader(
 ) {
     val listenTogetherManager = LocalListenTogetherManager.current
     val listenTogetherRoleState = listenTogetherManager?.role?.collectAsStateWithLifecycle(initialValue = RoomRole.NONE)
+    if (listenTogetherRoleState?.value == RoomRole.NONE) return
     val isListenTogetherGuest = listenTogetherRoleState?.value == RoomRole.GUEST
     Box(
         modifier = modifier

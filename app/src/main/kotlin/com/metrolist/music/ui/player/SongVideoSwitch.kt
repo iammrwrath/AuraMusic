@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Metrolist Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
@@ -17,7 +17,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -29,7 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -41,9 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.metrolist.music.R
 import com.metrolist.music.ui.theme.LocalNothingTheme
 
@@ -61,40 +57,25 @@ fun SongVideoSwitch(
     val containerBg = if (isNothing) {
         Color(0xFF141414).copy(alpha = 0.85f)
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+        Color.Black.copy(alpha = 0.45f)
     }
 
-    val selectedBg = if (isNothing) {
-        Color.White
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
+    val selectedBg = Color.White
 
-    val selectedTextColor = if (isNothing) {
-        Color.Black
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
-
-    val unselectedTextColor = if (isNothing) {
-        Color.White.copy(alpha = 0.6f)
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-    }
+    val selectedIconColor = Color.Black
+    val unselectedIconColor = Color.White.copy(alpha = 0.7f)
 
     BoxWithConstraints(
         modifier = modifier
-            .width(180.dp)
-            .height(36.dp)
-            .clip(RoundedCornerShape(50))
+            .width(88.dp)
+            .height(34.dp)
+            .clip(CircleShape)
             .background(containerBg)
-            .then(
-                if (isNothing) Modifier.border(
-                    BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-                    RoundedCornerShape(50)
-                ) else Modifier
+            .border(
+                BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+                CircleShape,
             )
-            .padding(3.dp),
+            .padding(2.5.dp),
     ) {
         val segmentWidth = maxWidth / 2
 
@@ -104,13 +85,13 @@ fun SongVideoSwitch(
             label = "pill_indicator_offset",
         )
 
-        // Sliding indicator
+        // Sliding white indicator
         Box(
             modifier = Modifier
                 .offset(x = indicatorOffset)
                 .width(segmentWidth)
                 .fillMaxHeight()
-                .clip(RoundedCornerShape(50))
+                .clip(CircleShape)
                 .background(selectedBg),
         )
 
@@ -118,16 +99,16 @@ fun SongVideoSwitch(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Song Tab
+            // Song (Audio) Tab
             val songColor by animateColorAsState(
-                targetValue = if (!isVideoMode) selectedTextColor else unselectedTextColor,
-                label = "song_color",
+                targetValue = if (!isVideoMode) selectedIconColor else unselectedIconColor,
+                label = "song_icon_color",
             )
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
+                    .clip(CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -135,35 +116,24 @@ fun SongVideoSwitch(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.music_note),
-                        contentDescription = null,
-                        tint = songColor,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.player_switch_song),
-                        color = songColor,
-                        fontSize = 12.sp,
-                        fontWeight = if (!isVideoMode) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
+                Icon(
+                    painter = painterResource(R.drawable.headphones),
+                    contentDescription = stringResource(R.string.player_switch_song),
+                    tint = songColor,
+                    modifier = Modifier.size(18.dp),
+                )
             }
 
             // Video Tab
             val videoColor by animateColorAsState(
-                targetValue = if (isVideoMode) selectedTextColor else unselectedTextColor,
-                label = "video_color",
+                targetValue = if (isVideoMode) selectedIconColor else unselectedIconColor,
+                label = "video_icon_color",
             )
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
+                    .clip(CircleShape)
                     .alpha(if (isVideoAvailable) 1f else 0.45f)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -178,23 +148,12 @@ fun SongVideoSwitch(
                     ),
                 contentAlignment = Alignment.Center,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.smart_display),
-                        contentDescription = null,
-                        tint = videoColor,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = stringResource(R.string.player_switch_video),
-                        color = videoColor,
-                        fontSize = 12.sp,
-                        fontWeight = if (isVideoMode) FontWeight.SemiBold else FontWeight.Normal,
-                    )
-                }
+                Icon(
+                    painter = painterResource(R.drawable.smart_display),
+                    contentDescription = stringResource(R.string.player_switch_video),
+                    tint = videoColor,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }

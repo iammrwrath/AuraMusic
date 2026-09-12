@@ -99,4 +99,11 @@ class VideoPlayerManagerTest {
         manager.release()
         assertEquals(null, manager.videoPlayer.value)
     }
+
+    @Test
+    fun `video error defaults to null and video loading defaults to false`() {
+        assertEquals(null, manager.videoError.value)
+        assertFalse(manager.isVideoLoading.value)
+        assertTrue(manager.isVideoAvailable.value)
+    }
 }
