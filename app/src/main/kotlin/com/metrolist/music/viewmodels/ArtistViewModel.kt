@@ -63,7 +63,7 @@ class ArtistViewModel @Inject constructor(
     private val syncUtils: SyncUtils,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    val artistId = savedStateHandle.get<String>("artistId")!!
+    val artistId = savedStateHandle.get<String>("artistId").orEmpty()
     private val isPodcastChannel = savedStateHandle.get<Boolean>("isPodcastChannel") ?: false
     var artistPage by mutableStateOf<ArtistPage?>(null)
 

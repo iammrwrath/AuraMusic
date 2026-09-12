@@ -1072,7 +1072,9 @@ class MusicService :
                                 Timber.tag("DiscordSvc").i("RPC toggle: initializing")
                                 DiscordRpcManager.init(this@MusicService)
                             }
-                            DiscordRpcManager.reconnectWithToken(DiscordRpcManager.getAccessToken()!!)
+                            DiscordRpcManager.getAccessToken()?.let { token ->
+                                DiscordRpcManager.reconnectWithToken(token)
+                            }
                         }
                     } else {
                         Timber.tag("DiscordSvc").w("RPC toggle: enabled but no token and not ready")
@@ -1404,7 +1406,6 @@ class MusicService :
 
         val silenceProcessor = SilenceDetectorAudioProcessor { handleLongSilenceDetected() }
 
-        // Set initial state — use pre-read prefs when available, otherwise fall back to DataStore
         val effectivePrefs = prefs ?: startupPrefs
         val useAudioTrackPlaybackParams = if (effectivePrefs != null) {
             val skipSilence = effectivePrefs[SkipSilenceKey] ?: false
@@ -1412,10 +1413,8 @@ class MusicService :
             silenceProcessor.instantModeEnabled = skipSilence && instantSkip
             effectivePrefs[AudioTrackPlaybackParamsKey] ?: true
         } else {
-            val skipSilence = dataStore.get(SkipSilenceKey, false)
-            val instantSkip = dataStore.get(SkipSilenceInstantKey, false)
-            silenceProcessor.instantModeEnabled = skipSilence && instantSkip
-            dataStore.get(AudioTrackPlaybackParamsKey, true)
+            silenceProcessor.instantModeEnabled = false
+            true
         }
 
         val player =
@@ -1465,20 +1464,14 @@ class MusicService :
                 .build()
         }
 
-        if (prefs != null) {
-            val offload = prefs[AudioOffload] ?: false
-            val crossfade = prefs[CrossfadeEnabledKey] ?: false
+        if (effectivePrefs != null) {
+            val offload = effectivePrefs[AudioOffload] ?: false
+            val crossfade = effectivePrefs[CrossfadeEnabledKey] ?: false
             player.setOffloadEnabled(if (crossfade) false else offload)
-            player.skipSilenceEnabled = prefs[SkipSilenceKey] ?: false
+            player.skipSilenceEnabled = effectivePrefs[SkipSilenceKey] ?: false
         } else {
-            player.apply {
-                runBlocking {
-                    val offload = dataStore.get(AudioOffload, false)
-                    val crossfade = dataStore.get(CrossfadeEnabledKey, false)
-                    setOffloadEnabled(if (crossfade) false else offload)
-                    skipSilenceEnabled = dataStore.get(SkipSilenceKey, false)
-                }
-            }
+            player.setOffloadEnabled(false)
+            player.skipSilenceEnabled = false
         }
         player.addAnalyticsListener(PlaybackStatsListener(false, this@MusicService))
 
@@ -5353,13 +5346,13 @@ class MusicService :
                         if (timeSinceStart > 8000 && gapToNext > 4000) {
                             "🎵 [Instrumental]"
                         } else if (activeEntry.text.isNotBlank()) {
-                            val original = activeEntry.text.trim()
+                            val original = activeEntry.text.replace("\n", " ").trim()
                             val translation = if (carLyricsTranslationEnabled) {
-                                activeEntry.translatedTextFlow.value?.trim()
+                                activeEntry.translatedTextFlow.value?.replace("\n", " ")?.trim()
                             } else null
 
                             if (!translation.isNullOrBlank() && !translation.equals(original, ignoreCase = true)) {
-                                "🎤 $original • $translation"
+                                "🎤 $original\n$translation"
                             } else {
                                 "🎤 $original"
                             }

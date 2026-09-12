@@ -285,13 +285,11 @@ class BackupRestoreViewModel @Inject constructor(
                                     androidx.datastore.preferences.core.PreferenceDataStoreFactory.create {
                                         stageSettings
                                     }
-                                kotlinx.coroutines.runBlocking {
-                                    stageDataStore.edit { prefs ->
-                                        prefs.remove(InnerTubeCookieKey)
-                                        prefs.remove(VisitorDataKey)
-                                        prefs.remove(DataSyncIdKey)
-                                        prefs.remove(InnerTubeAuthUserKey)
-                                    }
+                                stageDataStore.edit { prefs ->
+                                    prefs.remove(InnerTubeCookieKey)
+                                    prefs.remove(VisitorDataKey)
+                                    prefs.remove(DataSyncIdKey)
+                                    prefs.remove(InnerTubeAuthUserKey)
                                 }
 
                                 val actualSettings = File(

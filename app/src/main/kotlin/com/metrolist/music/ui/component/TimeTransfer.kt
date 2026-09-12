@@ -110,7 +110,7 @@ fun TimeTransfer(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = sourceSong.value != null &&
                             targetSong.value != null &&
-                            sourceSong.value!!.id != targetSong.value!!.id,
+                            sourceSong.value?.id != targetSong.value?.id,
                 ) {
                     Text(
                         text = stringResource(R.string.time_transfer_convert),

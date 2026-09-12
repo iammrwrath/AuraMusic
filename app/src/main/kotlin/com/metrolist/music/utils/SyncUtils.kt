@@ -30,6 +30,7 @@ import com.metrolist.music.db.entities.SongEntity
 import com.metrolist.music.extensions.collectLatest
 import com.metrolist.music.extensions.isInternetConnected
 import com.metrolist.music.extensions.isSyncEnabled
+import com.metrolist.music.extensions.isSyncEnabledSuspend
 import com.metrolist.music.models.toMediaMetadata
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -345,7 +346,7 @@ class SyncUtils @Inject constructor(
                 return@launch
             }
 
-            if (!context.isSyncEnabled() || !context.isInternetConnected()) {
+            if (!context.isSyncEnabledSuspend() || !context.isInternetConnected()) {
                 return@launch
             }
 

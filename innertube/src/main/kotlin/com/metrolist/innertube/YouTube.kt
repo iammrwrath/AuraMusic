@@ -77,7 +77,6 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
@@ -394,33 +393,34 @@ object YouTube {
                         ?.buttonRenderer
                         ?.navigationEndpoint
                         ?.watchPlaylistEndpoint
-                        ?.playlistId!!
+                        ?.playlistId ?: ""
+                val header = response.header?.musicDetailHeaderRenderer
                 val albumItem =
                     AlbumItem(
                         browseId = browseId,
                         playlistId = playlistId,
                         title =
-                            response.header.musicDetailHeaderRenderer.title.runs
+                            header?.title?.runs
                                 ?.firstOrNull()
-                                ?.text!!,
+                                ?.text.orEmpty(),
                         artists =
-                            response.header.musicDetailHeaderRenderer.subtitle.runs?.filter { it.navigationEndpoint != null }?.map {
+                            header?.subtitle?.runs?.filter { it.navigationEndpoint != null }?.map {
                                 Artist(
                                     name = it.text,
                                     id = it.navigationEndpoint?.browseEndpoint?.browseId,
                                 )
                             },
                         year =
-                            response.header.musicDetailHeaderRenderer.subtitle.runs
+                            header?.subtitle?.runs
                                 ?.lastOrNull()
                                 ?.text
                                 ?.toIntOrNull(),
                         thumbnail =
-                            response.header.musicDetailHeaderRenderer.thumbnail.croppedSquareThumbnailRenderer
+                            header?.thumbnail?.croppedSquareThumbnailRenderer
                                 ?.thumbnail
                                 ?.thumbnails
-                                ?.lastOrNull()!!
-                                .url,
+                                ?.lastOrNull()
+                                ?.url.orEmpty(),
                         explicit = false, // TODO: Extract explicit badge for albums from YouTube response
                     )
                 return@runCatching AlbumPage(
@@ -440,7 +440,7 @@ object YouTube {
                             ?.getItems()
                             ?.mapNotNull {
                                 AlbumPage.getSong(it, albumItem)
-                            }!!
+                            }.orEmpty()
                             .toMutableList(),
                     otherVersions = emptyList(),
                 )
@@ -449,35 +449,30 @@ object YouTube {
                     response.microformat
                         ?.microformatDataRenderer
                         ?.urlCanonical
-                        ?.substringAfterLast('=')!!
+                        ?.substringAfterLast('=', "") ?: ""
+                val responsiveHeader =
+                    response.contents
+                        ?.twoColumnBrowseResultsRenderer
+                        ?.tabs
+                        ?.firstOrNull()
+                        ?.tabRenderer
+                        ?.content
+                        ?.sectionListRenderer
+                        ?.contents
+                        ?.firstOrNull()
+                        ?.musicResponsiveHeaderRenderer
                 val albumItem =
                     AlbumItem(
                         browseId = browseId,
                         playlistId = playlistId,
                         title =
-                            response.contents
-                                ?.twoColumnBrowseResultsRenderer
-                                ?.tabs
-                                ?.firstOrNull()
-                                ?.tabRenderer
-                                ?.content
-                                ?.sectionListRenderer
-                                ?.contents
-                                ?.firstOrNull()
-                                ?.musicResponsiveHeaderRenderer
+                            responsiveHeader
                                 ?.title
                                 ?.runs
                                 ?.firstOrNull()
-                                ?.text!!,
+                                ?.text.orEmpty(),
                         artists =
-                            response.contents.twoColumnBrowseResultsRenderer.tabs
-                                .firstOrNull()
-                                ?.tabRenderer
-                                ?.content
-                                ?.sectionListRenderer
-                                ?.contents
-                                ?.firstOrNull()
-                                ?.musicResponsiveHeaderRenderer
+                            responsiveHeader
                                 ?.straplineTextOne
                                 ?.runs
                                 ?.oddElements()
@@ -486,36 +481,22 @@ object YouTube {
                                         name = it.text,
                                         id = it.navigationEndpoint?.browseEndpoint?.browseId,
                                     )
-                                }!!,
+                                }.orEmpty(),
                         year =
-                            response.contents.twoColumnBrowseResultsRenderer.tabs
-                                .firstOrNull()
-                                ?.tabRenderer
-                                ?.content
-                                ?.sectionListRenderer
-                                ?.contents
-                                ?.firstOrNull()
-                                ?.musicResponsiveHeaderRenderer
+                            responsiveHeader
                                 ?.subtitle
                                 ?.runs
                                 ?.lastOrNull()
                                 ?.text
                                 ?.toIntOrNull(),
                         thumbnail =
-                            response.contents.twoColumnBrowseResultsRenderer.tabs
-                                .firstOrNull()
-                                ?.tabRenderer
-                                ?.content
-                                ?.sectionListRenderer
-                                ?.contents
-                                ?.firstOrNull()
-                                ?.musicResponsiveHeaderRenderer
+                            responsiveHeader
                                 ?.thumbnail
                                 ?.musicThumbnailRenderer
                                 ?.thumbnail
                                 ?.thumbnails
                                 ?.lastOrNull()
-                                ?.url!!,
+                                ?.url.orEmpty(),
                         explicit = false, // TODO: Extract explicit badge for albums from YouTube response
                     )
                 val albumSongsList =
@@ -545,7 +526,9 @@ object YouTube {
                     album = resolvedAlbum,
                     songs = albumSongsList,
                     otherVersions =
-                        response.contents.twoColumnBrowseResultsRenderer.secondaryContents
+                        response.contents
+                            ?.twoColumnBrowseResultsRenderer
+                            ?.secondaryContents
                             ?.sectionListRenderer
                             ?.contents
                             ?.getOrNull(
@@ -3002,10 +2985,10 @@ object YouTube {
         innerTube.moveSongPlaylist(WEB_REMIX, playlistId, setVideoId, successorSetVideoId)
     }
 
-    fun createPlaylist(title: String) =
-        runBlocking {
+    suspend fun createPlaylist(title: String): String? =
+        runCatching {
             innerTube.createPlaylist(WEB_REMIX, title).body<CreatePlaylistResponse>().playlistId
-        }
+        }.getOrNull()
 
     suspend fun renamePlaylist(
         playlistId: String,

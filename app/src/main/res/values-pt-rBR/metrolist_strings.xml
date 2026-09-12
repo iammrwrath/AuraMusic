@@ -719,7 +719,7 @@
     <string name="recognition_notification_processing">Identificando…</string>
     <string name="recognition_notification_no_match">Nenhuma correspondência encontrada</string>
     <string name="recognition_notification_failed">Reconhecimento falhou</string>
-    <string name="listen_on_metrolist">Ouvir no metrolist</string>
+    <string name="listen_on_metrolist">Ouvir no AuraMusic</string>
     <string name="android_auto">Android Auto</string>
     <string name="android_auto_visible_sections">Seções visíveis</string>
     <string name="android_auto_reorder_hint">Toque em uma seção para ativar ou desativá-la.\nPressione e segure o botão de arrastar para reordenar. A primeira seção será mostrada como padrão</string>

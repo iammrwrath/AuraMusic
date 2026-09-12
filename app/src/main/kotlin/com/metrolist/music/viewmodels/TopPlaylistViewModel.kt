@@ -34,7 +34,7 @@ constructor(
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    val top = savedStateHandle.get<String>("top")!!
+    val top = savedStateHandle.get<String>("top").orEmpty()
 
     val topPeriod = MutableStateFlow(MyTopFilter.ALL_TIME)
 

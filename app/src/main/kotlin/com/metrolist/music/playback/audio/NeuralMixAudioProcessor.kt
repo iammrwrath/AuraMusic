@@ -123,6 +123,7 @@ class NeuralMixAudioProcessor : BaseAudioProcessor() {
 
         val bytesPerSample = if (encoding == C.ENCODING_PCM_FLOAT) 4 else 2
         val bytesPerFrame = channelCount * bytesPerSample
+        if (bytesPerFrame == 0) return
         val frames = remaining / bytesPerFrame
         val outBuffer = replaceOutputBuffer(frames * bytesPerFrame)
 
@@ -262,6 +263,12 @@ class NeuralMixAudioProcessor : BaseAudioProcessor() {
             x = hp
         }
         return x
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onFlush() {
+        lowState.fill(0f)
+        highState.fill(0f)
     }
 
     override fun onReset() {

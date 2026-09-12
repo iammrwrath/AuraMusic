@@ -384,7 +384,7 @@
     <string name="android_auto_lyrics">Display Live Lyrics in Android Auto</string>
     <string name="android_auto_lyrics_desc">Projects synchronized karaoke lyrics onto your car screen while driving</string>
     <string name="android_auto_lyrics_translation">Show AI Lyric Translation</string>
-    <string name="android_auto_lyrics_translation_desc">Display translation alongside original lyrics on car screen (Original • Translation)</string>
+    <string name="android_auto_lyrics_translation_desc">Display translation underneath original lyrics on car screen</string>
     <string name="car_lyrics_on">Lyrics: ON</string>
     <string name="car_lyrics_off">Lyrics: OFF</string>
     <string name="volume_boost">Volume Boost (Preamp)</string>

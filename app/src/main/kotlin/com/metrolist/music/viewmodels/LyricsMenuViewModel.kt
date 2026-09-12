@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 
 @HiltViewModel
@@ -93,13 +92,16 @@ constructor(
         mediaMetadata: MediaMetadata,
         lyricsEntity: LyricsEntity?,
     ) {
-        database.query {
-            lyricsEntity?.let(::delete)
-            val lyricsWithProvider =
-                runBlocking {
-                    lyricsHelper.getLyrics(mediaMetadata)
+        viewModelScope.launch(Dispatchers.IO) {
+            lyricsEntity?.let { entity ->
+                database.query {
+                    delete(entity)
                 }
-            upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
+            }
+            val lyricsWithProvider = lyricsHelper.getLyrics(mediaMetadata)
+            database.query {
+                upsert(LyricsEntity(mediaMetadata.id, lyricsWithProvider.lyrics, lyricsWithProvider.provider))
+            }
         }
     }
 }

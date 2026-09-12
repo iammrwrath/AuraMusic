@@ -782,6 +782,10 @@ constructor(
         }
 
         val resultList = searchResults.toList()
+        if (searchCache.size > 50) {
+            val cutoff = now - 60_000L
+            searchCache.entries.removeIf { it.value.first < cutoff }
+        }
         searchCache[trimmed.lowercase()] = Pair(now, resultList)
         return resultList
     }

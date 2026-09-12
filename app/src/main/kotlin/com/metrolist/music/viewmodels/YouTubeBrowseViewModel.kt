@@ -31,13 +31,14 @@ constructor(
     @ApplicationContext val context: Context,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    private val browseId = savedStateHandle.get<String>("browseId")!!
+    private val browseId = savedStateHandle.get<String>("browseId").orEmpty()
     private val params = savedStateHandle.get<String>("params")
 
     val result = MutableStateFlow<BrowseResult?>(null)
 
     init {
         viewModelScope.launch {
+            if (browseId.isEmpty()) return@launch
             val hideExplicit = context.dataStore.get(HideExplicitKey, false)
             val hideVideoSongs = context.dataStore.get(HideVideoSongsKey, false)
             val hideYoutubeShorts = context.dataStore.get(HideYoutubeShortsKey, false)

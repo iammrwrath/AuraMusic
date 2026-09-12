@@ -40,7 +40,7 @@ class OnlinePlaylistViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val database: MusicDatabase
 ) : ViewModel() {
-    private val playlistId = savedStateHandle.get<String>("playlistId")!!
+    private val playlistId = savedStateHandle.get<String>("playlistId").orEmpty()
 
     // Check if this is a special podcast playlist (with or without VL prefix)
     private val normalizedPlaylistId = playlistId.removePrefix("VL")

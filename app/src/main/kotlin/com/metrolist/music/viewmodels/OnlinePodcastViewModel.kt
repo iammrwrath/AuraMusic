@@ -31,7 +31,7 @@ class OnlinePodcastViewModel @Inject constructor(
     val database: MusicDatabase,
     private val syncUtils: SyncUtils,
 ) : ViewModel() {
-    private val podcastId = savedStateHandle.get<String>("podcastId")!!
+    private val podcastId = savedStateHandle.get<String>("podcastId").orEmpty()
 
     val podcast = MutableStateFlow<PodcastItem?>(null)
     val episodes = MutableStateFlow<List<EpisodeItem>>(emptyList())

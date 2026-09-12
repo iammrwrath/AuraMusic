@@ -45,7 +45,7 @@ constructor(
     database: MusicDatabase,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
-    val playlistId = savedStateHandle.get<String>("playlistId")!!
+    val playlistId = savedStateHandle.get<String>("playlistId").orEmpty()
     val playlist =
         database
             .playlist(playlistId)
