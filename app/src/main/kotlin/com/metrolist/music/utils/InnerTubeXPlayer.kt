@@ -103,6 +103,23 @@ object InnerTubeXPlayer {
             Result.failure(error)
         }
 
+    suspend fun videoStreamForPlayback(
+        videoId: String,
+        playlistId: String? = null,
+        audioQuality: AudioQuality,
+        connectivityManager: ConnectivityManager,
+        contentHints: ContentHints = ContentHints(),
+        allowBoundedRange: Boolean = true,
+    ): Result<PlaybackData> =
+        playerResponseForPlayback(
+            videoId = videoId,
+            playlistId = playlistId,
+            audioQuality = audioQuality,
+            connectivityManager = connectivityManager,
+            contentHints = contentHints.copy(wantVideo = true),
+            allowBoundedRange = allowBoundedRange,
+        )
+
     fun markWebRemixFailed(videoId: String) {
         webRemixFailures[videoId] = System.currentTimeMillis()
     }
@@ -225,6 +242,11 @@ object InnerTubeXPlayer {
         val requireBoundedRange: Boolean,
         val rangeChunkSizeBytes: Long,
         val useRangeChunks: Boolean,
+        val videoUrl: String? = null,
+        val videoWidth: Int? = null,
+        val videoHeight: Int? = null,
+        val videoBitrate: Int? = null,
+        val videoItag: Int? = null,
     )
 
     private data class ExtractionBundle(
@@ -349,6 +371,11 @@ object InnerTubeXPlayer {
             requireBoundedRange = this.requireBoundedRange,
             rangeChunkSizeBytes = this.rangeChunkSizeBytes,
             useRangeChunks = this.useRangeChunks,
+            videoUrl = videoUrl,
+            videoWidth = videoWidth,
+            videoHeight = videoHeight,
+            videoBitrate = videoBitrate,
+            videoItag = videoItag,
         )
     }
 }

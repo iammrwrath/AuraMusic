@@ -224,6 +224,9 @@ fun BottomSheetPlayer(
     val copiedArtistStr = stringResource(R.string.copied_artist)
     val bottomSheetPageState = LocalBottomSheetPageState.current
     val playerConnection = LocalPlayerConnection.current ?: return
+    val videoPlayerManager = playerConnection.videoPlayerManager
+    val isVideoMode by videoPlayerManager.isVideoMode.collectAsState()
+    val isVideoAvailable by videoPlayerManager.isVideoAvailable.collectAsState()
 
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(
@@ -311,6 +314,26 @@ fun BottomSheetPlayer(
                 insetsController.show(WindowInsetsCompat.Type.statusBars())
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
+        }
+    }
+
+    DisposableEffect(videoPlayerManager) {
+        val lifecycle = ProcessLifecycleOwner.get().lifecycle
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME -> {
+                        videoPlayerManager.onAppForegrounded()
+                    }
+                    Lifecycle.Event.ON_STOP, Lifecycle.Event.ON_PAUSE -> {
+                        videoPlayerManager.onAppBackgrounded()
+                    }
+                    else -> {}
+                }
+            }
+        lifecycle.addObserver(observer)
+        onDispose {
+            lifecycle.removeObserver(observer)
         }
     }
 
@@ -935,6 +958,7 @@ fun BottomSheetPlayer(
             if (!isListenTogetherGuest) {
                 {
                     playerConnection.service.clearAutomix()
+                    playerConnection.videoPlayerManager.setVideoMode(false)
                     playerConnection.player.stop()
                     playerConnection.player.clearMediaItems()
                 }
@@ -2099,24 +2123,34 @@ fun BottomSheetPlayer(
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
-                            targetState = showInlineLyrics,
-                            label = "Lyrics",
+                            targetState = if (showInlineLyrics) 2 else if (isVideoMode) 1 else 0,
+                            label = "LyricsOrVideoLandscape",
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { showLyrics ->
-                            if (showLyrics) {
-                                InlineLyricsView(
-                                    mediaMetadata = mediaMetadata,
-                                    showLyrics = showLyrics,
-                                    positionProvider = { effectivePosition },
-                                )
-                            } else {
-                                Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.animateContentSize(),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isLandscape = true,
-                                    isListenTogetherGuest = isListenTogetherGuest,
-                                )
+                        ) { visualState ->
+                            when (visualState) {
+                                2 -> {
+                                    InlineLyricsView(
+                                        mediaMetadata = mediaMetadata,
+                                        showLyrics = showInlineLyrics,
+                                        positionProvider = { effectivePosition },
+                                    )
+                                }
+                                1 -> {
+                                    PlayerVideoView(
+                                        videoPlayerManager = videoPlayerManager,
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                        isLandscape = true,
+                                    )
+                                }
+                                else -> {
+                                    Thumbnail(
+                                        sliderPositionProvider = sliderPositionProvider,
+                                        modifier = Modifier.animateContentSize(),
+                                        isPlayerExpanded = isExpandedProvider,
+                                        isLandscape = true,
+                                        isListenTogetherGuest = isListenTogetherGuest,
+                                    )
+                                }
                             }
                         }
                     }
@@ -2129,6 +2163,16 @@ fun BottomSheetPlayer(
                                 .animateContentSize()
                                 .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Top)),
                     ) {
+                        SongVideoSwitch(
+                            isVideoMode = isVideoMode,
+                            isVideoAvailable = isVideoAvailable,
+                            onModeChange = { enabled ->
+                                showInlineLyrics = false
+                                videoPlayerManager.setVideoMode(enabled)
+                            },
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+
                         Spacer(Modifier.weight(1f))
 
                         mediaMetadata?.let {
@@ -2153,6 +2197,16 @@ fun BottomSheetPlayer(
                             .padding(bottom = bottomPadding)
                             .animateContentSize(),
                 ) {
+                    SongVideoSwitch(
+                        isVideoMode = isVideoMode,
+                        isVideoAvailable = isVideoAvailable,
+                        onModeChange = { enabled ->
+                            showInlineLyrics = false
+                            videoPlayerManager.setVideoMode(enabled)
+                        },
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                    )
+
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier.weight(1f),
@@ -2162,23 +2216,36 @@ fun BottomSheetPlayer(
                         val sliderPositionProvider = remember { { currentSliderPosition } }
                         val isExpandedProvider = remember(state) { { state.isExpanded } }
                         AnimatedContent(
-                            targetState = showInlineLyrics,
-                            label = "Lyrics",
+                            targetState = if (showInlineLyrics) 2 else if (isVideoMode) 1 else 0,
+                            label = "LyricsOrVideoPortrait",
                             transitionSpec = { fadeIn() togetherWith fadeOut() },
-                        ) { showLyrics ->
-                            if (showLyrics) {
-                                InlineLyricsView(
-                                    mediaMetadata = mediaMetadata,
-                                    showLyrics = showLyrics,
-                                    positionProvider = { effectivePosition },
-                                )
-                            } else {
-                                Thumbnail(
-                                    sliderPositionProvider = sliderPositionProvider,
-                                    modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
-                                    isPlayerExpanded = isExpandedProvider,
-                                    isListenTogetherGuest = isListenTogetherGuest,
-                                )
+                        ) { visualState ->
+                            when (visualState) {
+                                2 -> {
+                                    InlineLyricsView(
+                                        mediaMetadata = mediaMetadata,
+                                        showLyrics = showInlineLyrics,
+                                        positionProvider = { effectivePosition },
+                                    )
+                                }
+                                1 -> {
+                                    PlayerVideoView(
+                                        videoPlayerManager = videoPlayerManager,
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = PlayerHorizontalPadding),
+                                        isLandscape = false,
+                                    )
+                                }
+                                else -> {
+                                    Thumbnail(
+                                        sliderPositionProvider = sliderPositionProvider,
+                                        modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
+                                        isPlayerExpanded = isExpandedProvider,
+                                        isListenTogetherGuest = isListenTogetherGuest,
+                                    )
+                                }
                             }
                         }
                     }

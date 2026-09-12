@@ -16,6 +16,10 @@ import androidx.media3.common.Player.REPEAT_MODE_OFF
 import androidx.media3.common.Player.STATE_ENDED
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.ExoPlayer
+import com.metrolist.music.constants.AudioQuality
+import com.metrolist.music.constants.AudioQualityKey
+import com.metrolist.music.playback.video.VideoPlayerManager
+import android.net.ConnectivityManager
 import com.metrolist.music.constants.SleepTimerCustomDaysKey
 import com.metrolist.music.constants.SleepTimerDayTimesKey
 import com.metrolist.music.constants.SleepTimerDefaultKey
@@ -93,6 +97,19 @@ class PlayerConnection(
 
     val player: ExoPlayer
         get() = getPlayerSafe()
+
+    val videoPlayerManager =
+        VideoPlayerManager(
+            context = context,
+            scope = scope,
+            playerProvider = { getPlayerOrNull() },
+            database = database,
+            connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager,
+            audioQualityProvider = {
+                val qualityStr = context.dataStore.get(AudioQualityKey, AudioQuality.AUTO.name)
+                runCatching { AudioQuality.valueOf(qualityStr) }.getOrDefault(AudioQuality.AUTO)
+            },
+        )
 
     /** Tracks whether player initialization completed successfully */
     private val isPlayerInitialized = MutableStateFlow(service.isPlayerReady.value)
