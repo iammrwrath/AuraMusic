@@ -337,6 +337,13 @@ fun BottomSheetPlayer(
         }
     }
 
+    LaunchedEffect(state.isExpanded, isVideoMode, showInlineLyrics) {
+        if (isVideoMode) {
+            val isVisible = state.isExpanded && !showInlineLyrics
+            videoPlayerManager.setPlaybackActive(isVisible)
+        }
+    }
+
     BackHandler(enabled = state.isExpanded) {
         state.collapseSoft()
     }

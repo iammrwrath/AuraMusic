@@ -689,6 +689,7 @@ class PlayerConnection(
 
     fun dispose() {
         try {
+            videoPlayerManager.release()
             attachedPlayer?.removeListener(this)
             attachedPlayer = null
             Timber.tag(TAG).d("PlayerConnection disposed successfully")

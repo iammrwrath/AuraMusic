@@ -84,6 +84,16 @@ class VideoPlayerManagerTest {
     }
 
     @Test
+    fun `playback active toggles without throwing`() {
+        manager.setVideoMode(true)
+        manager.setPlaybackActive(false)
+        manager.setPlaybackActive(true)
+        manager.onAppBackgrounded()
+        manager.onAppForegrounded()
+        assertTrue(manager.isVideoMode.value)
+    }
+
+    @Test
     fun `release resets player state without throwing`() {
         manager.setVideoMode(true)
         manager.release()

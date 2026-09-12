@@ -9,7 +9,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.util.LruCache
 import androidx.annotation.OptIn
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -48,7 +50,9 @@ class VideoPlayerManager(
     companion object {
         private const val TAG = "VideoPlayerManager"
         private const val DRIFT_SYNC_INTERVAL_MS = 500L
-        private const val DRIFT_TOLERANCE_MS = 150L
+        private const val MICRO_DRIFT_THRESHOLD_MS = 200L
+        private const val HARD_SEEK_THRESHOLD_MS = 1200L
+        private const val HARD_SEEK_COOLDOWN_MS = 1500L
     }
 
     private val _isVideoMode = MutableStateFlow(false)
@@ -78,10 +82,35 @@ class VideoPlayerManager(
     private var streamLoadJob: Job? = null
     private var syncJob: Job? = null
     private var boundMainPlayer: ExoPlayer? = null
+    private var isPlaybackActive = true
+
+    private val videoPlayerListener = object : Player.Listener {
+        override fun onPlayerError(error: PlaybackException) {
+            Timber.tag(TAG).e(error, "Video ExoPlayer error: %s", error.message)
+            currentMediaId?.let { videoStreamCache.remove(it) }
+            _videoError.value = error.message ?: "Video playback error"
+            _isVideoLoading.value = false
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_BUFFERING -> {
+                    _isVideoLoading.value = true
+                }
+                Player.STATE_READY -> {
+                    _isVideoLoading.value = false
+                    _videoError.value = null
+                }
+                Player.STATE_ENDED, Player.STATE_IDLE -> {
+                    _isVideoLoading.value = false
+                }
+            }
+        }
+    }
 
     private val mainPlayerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (_isVideoMode.value) {
+            if (_isVideoMode.value && isPlaybackActive) {
                 _videoPlayer.value?.playWhenReady = isPlaying
             }
         }
@@ -91,7 +120,7 @@ class VideoPlayerManager(
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
-            if (_isVideoMode.value) {
+            if (_isVideoMode.value && isPlaybackActive) {
                 _videoPlayer.value?.seekTo(newPosition.positionMs)
             }
         }
@@ -110,6 +139,7 @@ class VideoPlayerManager(
                     loadAndPlayVideo(newId)
                 } else if (newId == null) {
                     _videoPlayer.value?.stop()
+                    _videoPlayer.value?.clearMediaItems()
                 }
             }
         }
@@ -144,6 +174,7 @@ class VideoPlayerManager(
         } else {
             stopDriftSync()
             _videoPlayer.value?.stop()
+            _videoPlayer.value?.clearMediaItems()
             _isVideoLoading.value = false
         }
     }
@@ -168,11 +199,31 @@ class VideoPlayerManager(
         _areControlsVisible.value = !_areControlsVisible.value
     }
 
+    fun setPlaybackActive(active: Boolean) {
+        isPlaybackActive = active
+        if (!active) {
+            stopDriftSync()
+            _videoPlayer.value?.playWhenReady = false
+        } else if (_isVideoMode.value) {
+            val mainPlayer = playerProvider()
+            val video = _videoPlayer.value
+            if (mainPlayer != null && video != null) {
+                video.seekTo(mainPlayer.currentPosition)
+                video.playWhenReady = mainPlayer.isPlaying
+                startDriftSync()
+            }
+        }
+    }
+
     fun loadAndPlayVideo(mediaId: String) {
         attachMainPlayerListener()
         val mainPlayer = playerProvider()
         currentMediaId = mediaId
         _videoError.value = null
+
+        // Immediately clear previous video frames to avoid showing stale frames
+        _videoPlayer.value?.stop()
+        _videoPlayer.value?.clearMediaItems()
 
         val cached = videoStreamCache[mediaId]
         if (cached?.videoUrl != null) {
@@ -199,6 +250,9 @@ class VideoPlayerManager(
             )
 
             withContext(Dispatchers.Main) {
+                // Guard against race conditions when user rapidly skips songs
+                if (currentMediaId != mediaId) return@withContext
+
                 _isVideoLoading.value = false
                 result.fold(
                     onSuccess = { data ->
@@ -230,57 +284,87 @@ class VideoPlayerManager(
         var player = _videoPlayer.value
 
         if (player == null) {
-            val okHttpClient = OkHttpClient.Builder()
-                .proxy(YouTube.proxy)
-                .apply {
-                    YouTube.proxyAuth?.let { auth ->
-                        proxyAuthenticator { _, response ->
-                            response.request.newBuilder()
-                                .header("Proxy-Authorization", auth)
-                                .build()
-                        }
-                    }
-                }.build()
-
-            val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-                .setDefaultRequestProperties(data.streamHeaders)
-
             val renderersFactory = DefaultRenderersFactory(context)
 
             player = ExoPlayer.Builder(context, renderersFactory)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
                 .build()
                 .apply {
                     volume = 0f // Audio is played through main player
-                    playWhenReady = isPlaying
+                    // Disable audio track decoding on secondary player to save CPU and memory
+                    trackSelectionParameters = trackSelectionParameters.buildUpon()
+                        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+                        .build()
+                    addListener(videoPlayerListener)
                 }
 
             _videoPlayer.value = player
         }
 
-        val mediaItem = MediaItem.Builder()
-            .setUri(videoUrl)
-            .build()
+        val okHttpClient = OkHttpClient.Builder()
+            .proxy(YouTube.proxy)
+            .apply {
+                YouTube.proxyAuth?.let { auth ->
+                    proxyAuthenticator { _, response ->
+                        response.request.newBuilder()
+                            .header("Proxy-Authorization", auth)
+                            .build()
+                    }
+                }
+            }.build()
 
-        player.setMediaItem(mediaItem, startPositionMs)
+        val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+            .setDefaultRequestProperties(data.streamHeaders)
+
+        val mediaSource = DefaultMediaSourceFactory(dataSourceFactory)
+            .createMediaSource(MediaItem.fromUri(videoUrl))
+
+        player.setMediaSource(mediaSource, startPositionMs)
         player.prepare()
         player.playbackParameters = playerProvider()?.playbackParameters ?: PlaybackParameters.DEFAULT
-        player.playWhenReady = isPlaying
+        player.playWhenReady = isPlaying && isPlaybackActive
     }
 
     private fun startDriftSync() {
         syncJob?.cancel()
         syncJob = scope.launch(Dispatchers.Main) {
-            while (isActive && _isVideoMode.value) {
+            var lastHardSeekTime = 0L
+            while (isActive && _isVideoMode.value && isPlaybackActive) {
                 delay(DRIFT_SYNC_INTERVAL_MS)
                 val main = playerProvider() ?: continue
                 val video = _videoPlayer.value ?: continue
 
-                if (main.isPlaying && video.playbackState == Player.STATE_READY) {
+                if (!main.isPlaying) {
+                    if (video.isPlaying) {
+                        video.pause()
+                    }
+                    continue
+                }
+
+                if (video.playbackState == Player.STATE_READY) {
+                    val now = System.currentTimeMillis()
                     val drift = main.currentPosition - video.currentPosition
-                    if (abs(drift) > DRIFT_TOLERANCE_MS) {
-                        Timber.tag(TAG).d("Correcting video drift: ${drift}ms")
-                        video.seekTo(main.currentPosition)
+                    val absDrift = abs(drift)
+
+                    if (absDrift > HARD_SEEK_THRESHOLD_MS) {
+                        if (now - lastHardSeekTime > HARD_SEEK_COOLDOWN_MS) {
+                            Timber.tag(TAG).d("Hard correcting video drift: ${drift}ms")
+                            video.seekTo(main.currentPosition)
+                            lastHardSeekTime = now
+                        }
+                    } else if (absDrift > MICRO_DRIFT_THRESHOLD_MS) {
+                        // Smooth micro-adjustment: adjust speed ±5% so lip-sync catches up without dropped frames
+                        val baseSpeed = main.playbackParameters.speed
+                        val adjustedSpeed = if (drift > 0) baseSpeed * 1.05f else baseSpeed * 0.95f
+                        video.playbackParameters = PlaybackParameters(adjustedSpeed)
+                    } else {
+                        // Drift is imperceptible (< 200ms), lock playback speed to main player
+                        if (video.playbackParameters != main.playbackParameters) {
+                            video.playbackParameters = main.playbackParameters
+                        }
+                    }
+
+                    if (!video.playWhenReady && main.isPlaying) {
+                        video.playWhenReady = true
                     }
                 }
             }
@@ -294,20 +378,11 @@ class VideoPlayerManager(
 
     fun onAppForegrounded() {
         attachMainPlayerListener()
-        if (_isVideoMode.value) {
-            val mainPlayer = playerProvider()
-            val video = _videoPlayer.value
-            if (mainPlayer != null && video != null) {
-                video.seekTo(mainPlayer.currentPosition)
-                video.playWhenReady = mainPlayer.isPlaying
-                startDriftSync()
-            }
-        }
+        setPlaybackActive(true)
     }
 
     fun onAppBackgrounded() {
-        stopDriftSync()
-        _videoPlayer.value?.pause()
+        setPlaybackActive(false)
     }
 
     fun release() {
@@ -315,7 +390,9 @@ class VideoPlayerManager(
         streamLoadJob?.cancel()
         boundMainPlayer?.removeListener(mainPlayerListener)
         boundMainPlayer = null
-        _videoPlayer.value?.release()
+        val player = _videoPlayer.value
+        player?.removeListener(videoPlayerListener)
+        player?.release()
         _videoPlayer.value = null
         videoStreamCache.evictAll()
     }

@@ -5,7 +5,11 @@
 
 package com.metrolist.music.ui.player
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.view.ViewGroup
+import android.view.Window
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -15,6 +19,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,14 +38,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -48,16 +52,28 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.metrolist.music.extensions.togglePlayPause
-import androidx.media3.common.Player
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.ThumbnailCornerRadius
+import com.metrolist.music.extensions.togglePlayPause
 import com.metrolist.music.playback.video.VideoPlayerManager
 import kotlinx.coroutines.delay
+
+private fun Context.findActivity(): Activity? {
+    var ctx = this
+    while (ctx is ContextWrapper) {
+        if (ctx is Activity) return ctx
+        ctx = ctx.baseContext
+    }
+    return null
+}
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -74,7 +90,7 @@ fun PlayerVideoView(
     val isFullscreen by videoPlayerManager.isFullscreen.collectAsState()
     val areControlsVisible by videoPlayerManager.areControlsVisible.collectAsState()
 
-    // Auto-hide controls after 3 seconds when playing
+    // Auto-hide controls after 3.5 seconds when playing
     LaunchedEffect(areControlsVisible, isPlaying) {
         if (areControlsVisible && isPlaying) {
             delay(3500)
@@ -82,7 +98,7 @@ fun PlayerVideoView(
         }
     }
 
-    val videoContent: @Composable (Boolean) -> Unit = { inFullscreen ->
+    val videoSurfaceView: @Composable (Boolean) -> Unit = { inFullscreen ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -103,7 +119,9 @@ fun PlayerVideoView(
                             ViewGroup.LayoutParams.MATCH_PARENT,
                             ViewGroup.LayoutParams.MATCH_PARENT,
                         )
+                        setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                         setKeepContentOnPlayerReset(true)
+                        setEnableComposeSurfaceSyncWorkaround(true)
                         this.player = videoPlayer
                     }
                 },
@@ -112,25 +130,14 @@ fun PlayerVideoView(
                         playerView.player = videoPlayer
                     }
                 },
+                onRelease = { playerView ->
+                    playerView.player = null
+                },
                 modifier = Modifier.fillMaxSize(),
             )
 
             // Buffering / Loading Indicator
-            var isBuffering by remember { mutableStateOf(false) }
-            DisposableEffect(videoPlayer) {
-                val listener = object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        isBuffering = playbackState == Player.STATE_BUFFERING
-                    }
-                }
-                videoPlayer?.addListener(listener)
-                isBuffering = videoPlayer?.playbackState == Player.STATE_BUFFERING
-                onDispose {
-                    videoPlayer?.removeListener(listener)
-                }
-            }
-
-            if (isVideoLoading || isBuffering) {
+            if (isVideoLoading) {
                 Box(
                     modifier = Modifier
                         .size(56.dp)
@@ -151,11 +158,11 @@ fun PlayerVideoView(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.8f))
+                        .background(Color.Black.copy(alpha = 0.85f))
                         .padding(16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    androidx.compose.foundation.layout.Column(
+                    Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
@@ -205,7 +212,7 @@ fun PlayerVideoView(
                         )
                     }
 
-                    // Fullscreen Button
+                    // Fullscreen Toggle Button
                     IconButton(
                         onClick = { videoPlayerManager.toggleFullscreen() },
                         modifier = Modifier
@@ -223,7 +230,7 @@ fun PlayerVideoView(
                         )
                     }
 
-                    // In fullscreen, top-left back button
+                    // Top-Left Back / Exit Fullscreen Button
                     if (inFullscreen) {
                         IconButton(
                             onClick = { videoPlayerManager.setFullscreen(false) },
@@ -249,21 +256,32 @@ fun PlayerVideoView(
 
     // Normal Inline Video View
     val containerShape = RoundedCornerShape(ThumbnailCornerRadius)
+    val inlineModifier = modifier
+        .then(
+            if (isLandscape) {
+                Modifier.fillMaxSize()
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+            }
+        )
+        .clip(containerShape)
+
     Box(
-        modifier = modifier
-            .then(
-                if (isLandscape) {
-                    Modifier.fillMaxSize()
-                } else {
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f)
-                }
-            )
-            .clip(containerShape),
+        modifier = inlineModifier,
         contentAlignment = Alignment.Center,
     ) {
-        videoContent(false)
+        // Only render inline PlayerView when NOT in fullscreen to avoid surface competition
+        if (!isFullscreen) {
+            videoSurfaceView(false)
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+            )
+        }
     }
 
     // Fullscreen Overlay Dialog
@@ -278,12 +296,31 @@ fun PlayerVideoView(
             BackHandler {
                 videoPlayerManager.setFullscreen(false)
             }
+
+            val view = LocalView.current
+            DisposableEffect(view) {
+                val dialogWindow: Window? = (view.parent as? DialogWindowProvider)?.window
+                    ?: view.context.findActivity()?.window
+                dialogWindow?.let { win ->
+                    val insetsController = WindowCompat.getInsetsController(win, win.decorView)
+                    insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                    insetsController.systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+                onDispose {
+                    dialogWindow?.let { win ->
+                        val insetsController = WindowCompat.getInsetsController(win, win.decorView)
+                        insetsController.show(WindowInsetsCompat.Type.systemBars())
+                    }
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black),
             ) {
-                videoContent(true)
+                videoSurfaceView(true)
             }
         }
     }
