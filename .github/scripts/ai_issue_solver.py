@@ -29,11 +29,11 @@ def search_candidate_files(issue_text: str):
             referenced_files.add(str(path))
     return list(referenced_files)
 
-def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-2.5-flash") -> str:
+def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.6-flash") -> str:
     """Calls Gemini Flash model via REST API with fallback support."""
     models_to_try = [primary_model]
     # Officially supported Gemini models in Google AI Studio / Generative Language API
-    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]:
+    for fallback in ["gemini-3.6-flash", "gemini-3-flash", "gemini-3.6-pro", "gemini-2.5-flash"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -86,7 +86,7 @@ def main():
     issue_title = get_env_var("ISSUE_TITLE", "Diagnostic Report")
     issue_body = get_env_var("ISSUE_BODY", "")
     issue_number = get_env_var("ISSUE_NUMBER", "0")
-    model_name = get_env_var("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name = get_env_var("GEMINI_MODEL", "gemini-3.6-flash")
 
     api_key = get_env_var("GEMINI_API_KEY")
     if not api_key:
