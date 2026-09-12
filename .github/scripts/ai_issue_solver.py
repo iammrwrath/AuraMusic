@@ -29,11 +29,11 @@ def search_candidate_files(issue_text: str):
             referenced_files.add(str(path))
     return list(referenced_files)
 
-def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.6-flash") -> str:
+def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-2.5-flash") -> str:
     """Calls Gemini Flash model via REST API with fallback support."""
     models_to_try = [primary_model]
-    # Updated fallback models to currently supported versions
-    for fallback in ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.0-flash-exp"]:
+    # Officially supported Gemini models in Google AI Studio / Generative Language API
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -63,16 +63,20 @@ def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.6-
         
         try:
             print(f"[*] Querying Gemini model: {model}...")
-            with urllib.request.urlopen(req) as response:
+            with urllib.request.urlopen(req, timeout=60) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 return res_data["candidates"][0]["content"]["parts"][0]["text"]
         except urllib.error.HTTPError as e:
             err_body = e.read().decode("utf-8", errors="ignore")
             print(f"[!] Model {model} HTTP Error {e.code}: {err_body}", file=sys.stderr)
             last_error = e
-            if e.code == 404:
+            if e.code in (404, 400, 429, 500, 503):
                 continue
             raise
+        except Exception as e:
+            print(f"[!] Model {model} unexpected error: {e}", file=sys.stderr)
+            last_error = e
+            continue
 
     if last_error:
         raise last_error
@@ -82,7 +86,7 @@ def main():
     issue_title = get_env_var("ISSUE_TITLE", "Diagnostic Report")
     issue_body = get_env_var("ISSUE_BODY", "")
     issue_number = get_env_var("ISSUE_NUMBER", "0")
-    model_name = get_env_var("GEMINI_MODEL", "gemini-3.6-flash")
+    model_name = get_env_var("GEMINI_MODEL", "gemini-2.5-flash")
 
     api_key = get_env_var("GEMINI_API_KEY")
     if not api_key:
@@ -152,7 +156,18 @@ Format your response strictly as follows:
 """
 
     print(f"[*] Contacting Gemini API ({model_name}) for diagnosis and code patch...")
-    response_text = call_gemini_api(api_key, prompt, primary_model=model_name)
+    try:
+        response_text = call_gemini_api(api_key, prompt, primary_model=model_name)
+    except Exception as e:
+        print(f"[!] Gemini API query failed: {e}", file=sys.stderr)
+        with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
+            f.write(
+                f"### 🤖 AI Self-Healing Issue Solver\n\n"
+                f"Issue #{issue_number} was analyzed, but the automated diagnosis query encountered an error:\n\n"
+                f"> ⚠️ `{e}`\n\n"
+                f"A team member will review this diagnostic report manually.\n"
+            )
+        sys.exit(0)
 
     # Extract diagnosis and patch
     diag_match = re.search(r'## DIAGNOSIS\s+(.*?)(?=## PATCH|$)', response_text, re.DOTALL)
@@ -184,7 +199,7 @@ Format your response strictly as follows:
         if os.path.exists(patch_file):
             os.remove(patch_file)
         with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
-            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied to the branch. Please review the diagnosis and patch above and apply manually if needed.\n")
+            f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied cleanly to the branch. Please review the diagnosis and patch above to apply manually.\n")
         sys.exit(0)
 
     print("[✓] Patch applied successfully!")
