@@ -236,11 +236,18 @@ jobs:
             cat release_notes.md
           } > attributed_release_notes.md
 
-          gh release create "v${{ needs.check-version.outputs.new_version }}" \
-            --title "${{ needs.check-version.outputs.new_version }}" \
-            --notes-file attributed_release_notes.md \
-            --latest \
-            release_files/*.apk
+          TAG="v${{ needs.check-version.outputs.new_version }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists. Updating assets..."
+            gh release edit "$TAG" --title "${{ needs.check-version.outputs.new_version }}" --notes-file attributed_release_notes.md --latest
+            gh release upload "$TAG" release_files/*.apk --clobber
+          else
+            gh release create "$TAG" \
+              --title "${{ needs.check-version.outputs.new_version }}" \
+              --notes-file attributed_release_notes.md \
+              --latest \
+              release_files/*.apk
+          fi
 
           echo "Release created successfully!"
 
