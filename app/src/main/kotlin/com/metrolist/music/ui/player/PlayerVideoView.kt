@@ -41,8 +41,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
@@ -59,6 +61,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import coil3.compose.AsyncImage
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.ThumbnailCornerRadius
@@ -83,6 +86,7 @@ fun PlayerVideoView(
     isLandscape: Boolean = false,
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
+    val mediaMetadata by playerConnection.mediaMetadata.collectAsState()
     val videoPlayer by videoPlayerManager.videoPlayer.collectAsState()
     val isVideoLoading by videoPlayerManager.isVideoLoading.collectAsState()
     val isVideoPlaying by videoPlayerManager.isVideoPlaying.collectAsState()
@@ -113,6 +117,19 @@ fun PlayerVideoView(
                 ),
             contentAlignment = Alignment.Center,
         ) {
+            if (isVideoLoading && !inFullscreen) {
+                mediaMetadata?.thumbnailUrl?.let { thumb ->
+                    AsyncImage(
+                        model = thumb,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .alpha(0.5f),
+                    )
+                }
+            }
+
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {

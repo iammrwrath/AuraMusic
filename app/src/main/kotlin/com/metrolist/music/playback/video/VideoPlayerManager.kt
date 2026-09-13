@@ -92,8 +92,39 @@ class VideoPlayerManager(
 
     private var currentMediaId: String? = null
     private var streamLoadJob: Job? = null
+    private var preloadJob: Job? = null
+    private var preloadingMediaId: String? = null
     private var boundMainPlayer: ExoPlayer? = null
     private var isPlaybackActive = true
+
+    private var cachedOkHttpClient: OkHttpClient? = null
+    private var lastProxy = YouTube.proxy
+    private var lastProxyAuth = YouTube.proxyAuth
+
+    private fun getOkHttpClient(): OkHttpClient {
+        val currentProxy = YouTube.proxy
+        val currentAuth = YouTube.proxyAuth
+        val client = cachedOkHttpClient
+        if (client != null && currentProxy == lastProxy && currentAuth == lastProxyAuth) {
+            return client
+        }
+        lastProxy = currentProxy
+        lastProxyAuth = currentAuth
+        val newClient = OkHttpClient.Builder()
+            .proxy(currentProxy)
+            .apply {
+                currentAuth?.let { auth ->
+                    proxyAuthenticator { _, response ->
+                        response.request.newBuilder()
+                            .header("Proxy-Authorization", auth)
+                            .build()
+                    }
+                }
+            }
+            .build()
+        cachedOkHttpClient = newClient
+        return newClient
+    }
 
     private val videoPlayerListener = object : Player.Listener {
         override fun onPlayerError(error: PlaybackException) {
@@ -102,6 +133,8 @@ class VideoPlayerManager(
             _videoError.value = error.message ?: "Video playback error"
             _isVideoLoading.value = false
             _isVideoPlaying.value = false
+            // Keep main audio player audible if video fails
+            playerProvider()?.volume = 1f
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -116,6 +149,22 @@ class VideoPlayerManager(
                 Player.STATE_READY -> {
                     _isVideoLoading.value = false
                     _videoError.value = null
+                    if (_isVideoMode.value) {
+                        val mainPlayer = playerProvider()
+                        val video = _videoPlayer.value
+                        if (video != null && video.volume < 1f) {
+                            // Seamless handoff: reconcile any slight position drift during buffer phase
+                            if (mainPlayer != null) {
+                                val mainPos = mainPlayer.currentPosition
+                                val videoPos = video.currentPosition
+                                if (kotlin.math.abs(videoPos - mainPos) > 120) {
+                                    video.seekTo(mainPos.coerceAtLeast(0L))
+                                }
+                                mainPlayer.volume = 0f
+                            }
+                            video.volume = 1f
+                        }
+                    }
                 }
                 Player.STATE_ENDED -> {
                     _isVideoLoading.value = false
@@ -205,15 +254,15 @@ class VideoPlayerManager(
     }
 
     fun preloadMusicVideoId(mediaId: String, mediaItem: MediaItem? = null) {
-        if (songToMusicVideoCache.get(mediaId) != null) return
+        if (songToMusicVideoCache.get(mediaId) != null && videoStreamCache.get(mediaId) != null) return
         runOnMain {
-            if (songToMusicVideoCache.get(mediaId) != null) return@runOnMain
+            if (songToMusicVideoCache.get(mediaId) != null && videoStreamCache.get(mediaId) != null) return@runOnMain
             val currentItem = mediaItem ?: playerProvider()?.currentMediaItem
             val tagMeta = currentItem?.localConfiguration?.tag as? MediaMetadata
-            if (tagMeta?.isVideoSong == true) {
+            val isAlreadyVideo = tagMeta?.isVideoSong == true
+            if (isAlreadyVideo) {
                 songToMusicVideoCache.put(mediaId, mediaId)
                 _isVideoAvailable.value = true
-                return@runOnMain
             }
             val songTitle = tagMeta?.title
                 ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.title?.toString() else null)
@@ -221,12 +270,44 @@ class VideoPlayerManager(
                 ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
                 ?: ""
 
-            scope.launch(Dispatchers.IO) {
+            preloadingMediaId = mediaId
+            preloadJob?.cancel()
+            preloadJob = scope.launch(Dispatchers.IO) {
                 try {
-                    val resolved = resolveMusicVideoId(mediaId, songTitle, artistName)
-                    if (resolved != null) {
-                        songToMusicVideoCache.put(mediaId, resolved)
-                        _isVideoAvailable.value = true
+                    var targetVideoId = songToMusicVideoCache.get(mediaId)
+                    if (targetVideoId == null && !isAlreadyVideo) {
+                        val resolved = resolveMusicVideoId(mediaId, songTitle, artistName)
+                        if (resolved != null) {
+                            targetVideoId = resolved
+                            songToMusicVideoCache.put(mediaId, resolved)
+                            _isVideoAvailable.value = true
+                        } else {
+                            targetVideoId = mediaId
+                        }
+                    } else if (targetVideoId == null) {
+                        targetVideoId = mediaId
+                    }
+
+                    if (videoStreamCache.get(targetVideoId) == null && videoStreamCache.get(mediaId) == null) {
+                        val audioQuality = audioQualityProvider()
+                        val song = database.songEntity(mediaId)
+                        val contentHints = ContentHints(
+                            isExplicit = song?.explicit,
+                            isUploaded = song?.isUploaded,
+                        )
+                        val result = InnerTubeXPlayer.videoStreamForPlayback(
+                            videoId = targetVideoId,
+                            audioQuality = audioQuality,
+                            connectivityManager = connectivityManager,
+                            contentHints = contentHints,
+                        )
+                        val data = result.getOrNull()
+                        if (data?.videoUrl != null) {
+                            videoStreamCache.put(mediaId, data)
+                            videoStreamCache.put(targetVideoId, data)
+                            _isVideoAvailable.value = true
+                            Timber.tag(TAG).d("Preloaded video stream for $mediaId (target=$targetVideoId)")
+                        }
                     }
                 } catch (e: Exception) {
                     Timber.tag(TAG).w(e, "Failed to preload music video for $mediaId")
@@ -242,24 +323,33 @@ class VideoPlayerManager(
             attachMainPlayerListener()
 
             if (enabled) {
+                // Song -> Video: Keep mainPlayer audio playing seamlessly without silence dropouts
                 val mainPlayer = playerProvider()
-                mainPlayer?.volume = 0f
                 val mediaId = mainPlayer?.currentMediaItem?.mediaId ?: currentMediaId
                 if (mediaId != null) {
                     loadAndPlayVideo(mediaId)
                 }
             } else {
+                // Video -> Song: Seamlessly transfer playback position and state to mainPlayer
                 val video = _videoPlayer.value
                 val main = playerProvider()
-                if (video != null && main != null) {
-                    val videoPos = video.currentPosition
-                    if (videoPos > 0 && main.duration > 0) {
-                        main.seekTo(videoPos.coerceAtMost(main.duration))
+                val videoPos = video?.currentPosition ?: 0L
+                val wasPlaying = (video?.isPlaying == true) || (video?.playWhenReady == true)
+
+                if (main != null) {
+                    val targetDuration = if (main.duration > 0) main.duration else Long.MAX_VALUE
+                    main.seekTo(videoPos.coerceIn(0L, targetDuration))
+                    main.volume = 1f
+                    main.playWhenReady = wasPlaying
+                    if (wasPlaying) {
+                        main.play()
+                    } else {
+                        main.pause()
                     }
                 }
-                main?.volume = 1f
-                _videoPlayer.value?.stop()
-                _videoPlayer.value?.clearMediaItems()
+                video?.volume = 0f
+                video?.stop()
+                video?.clearMediaItems()
                 _isVideoLoading.value = false
                 _isVideoPlaying.value = false
             }
@@ -270,28 +360,15 @@ class VideoPlayerManager(
         setVideoMode(!_isVideoMode.value)
     }
 
-    fun togglePlayPause() {
-        runOnMain {
-            val video = _videoPlayer.value
-            val main = playerProvider()
-            if (video != null) {
-                if (video.isPlaying) {
-                    video.pause()
-                    main?.pause()
-                } else {
-                    video.play()
-                    main?.play()
-                }
-            } else {
-                main?.let { if (it.isPlaying) it.pause() else it.play() }
-            }
-        }
-    }
-
     fun seekTo(positionMs: Long) {
         runOnMain {
-            _videoPlayer.value?.seekTo(positionMs)
-            playerProvider()?.seekTo(positionMs.coerceAtMost(playerProvider()?.duration ?: Long.MAX_VALUE))
+            val safePos = positionMs.coerceAtLeast(0L)
+            _videoPlayer.value?.seekTo(safePos)
+            val mainPlayer = playerProvider()
+            if (mainPlayer != null) {
+                val target = if (mainPlayer.duration > 0) safePos.coerceAtMost(mainPlayer.duration) else safePos
+                mainPlayer.seekTo(target)
+            }
         }
     }
 
@@ -322,6 +399,24 @@ class VideoPlayerManager(
                 if (mainPlayer != null && video != null) {
                     video.playWhenReady = mainPlayer.isPlaying
                 }
+            }
+        }
+    }
+
+    fun togglePlayPause() {
+        runOnMain {
+            val video = _videoPlayer.value
+            val main = playerProvider()
+            if (video != null && _isVideoMode.value) {
+                if (video.isPlaying) {
+                    video.pause()
+                    main?.pause()
+                } else {
+                    video.play()
+                    main?.play()
+                }
+            } else {
+                main?.let { if (it.isPlaying) it.pause() else it.play() }
             }
         }
     }
@@ -372,10 +467,6 @@ class VideoPlayerManager(
             currentMediaId = mediaId
             _videoError.value = null
 
-            // Immediately clear previous video frames to avoid showing stale frames
-            _videoPlayer.value?.stop()
-            _videoPlayer.value?.clearMediaItems()
-
             // Safely capture metadata and state on Main thread before launching IO
             val currentItem = mainPlayer?.currentMediaItem
             val tagMeta = currentItem?.localConfiguration?.tag as? MediaMetadata
@@ -387,7 +478,7 @@ class VideoPlayerManager(
                 ?: ""
 
             val cachedVideoId = songToMusicVideoCache.get(mediaId) ?: mediaId
-            val cached = videoStreamCache[cachedVideoId]
+            val cached = videoStreamCache[cachedVideoId] ?: videoStreamCache[mediaId]
             if (cached?.videoUrl != null) {
                 Timber.tag(TAG).d("Playing cached video stream for $mediaId (id=$cachedVideoId)")
                 _isVideoAvailable.value = true
@@ -402,6 +493,22 @@ class VideoPlayerManager(
 
             streamLoadJob = scope.launch(Dispatchers.IO) {
                 try {
+                    // If a preload job is actively running for this track, await its completion
+                    if (preloadingMediaId == mediaId && preloadJob?.isActive == true) {
+                        preloadJob?.join()
+                        val preloaded = videoStreamCache[cachedVideoId] ?: videoStreamCache[mediaId]
+                        if (preloaded?.videoUrl != null) {
+                            withContext(Dispatchers.Main) {
+                                if (currentMediaId != mediaId) return@withContext
+                                _isVideoAvailable.value = true
+                                val currentPos = playerProvider()?.currentPosition ?: 0L
+                                val isPlaying = playerProvider()?.playWhenReady ?: playerProvider()?.isPlaying ?: false
+                                setupExoPlayerWithStream(preloaded, currentPos, isPlaying)
+                            }
+                            return@launch
+                        }
+                    }
+
                     val song = database.songEntity(mediaId)
                     val audioQuality = audioQualityProvider()
                     val contentHints = ContentHints(
@@ -453,7 +560,6 @@ class VideoPlayerManager(
                         // Guard against race conditions when user rapidly skips songs
                         if (currentMediaId != mediaId) return@withContext
 
-                        _isVideoLoading.value = false
                         if (data?.videoUrl != null) {
                             val streamData = data
                             Timber.tag(TAG).i("Successfully resolved video stream for $mediaId (target=$targetVideoId): itag=${streamData.videoItag} ${streamData.videoWidth}x${streamData.videoHeight}")
@@ -465,6 +571,7 @@ class VideoPlayerManager(
                             setupExoPlayerWithStream(streamData, currentPos, isPlaying)
                         } else {
                             Timber.tag(TAG).w("No video stream returned for $mediaId")
+                            _isVideoLoading.value = false
                             _isVideoAvailable.value = false
                             _videoError.value = "Video not available"
                         }
@@ -490,25 +597,16 @@ class VideoPlayerManager(
             player = ExoPlayer.Builder(context, renderersFactory)
                 .build()
                 .apply {
-                    volume = 1f
+                    volume = 0f // Start muted while buffering
                     addListener(videoPlayerListener)
                 }
 
             _videoPlayer.value = player
+        } else {
+            player.volume = 0f // Mute while buffering
         }
 
-        val okHttpClient = OkHttpClient.Builder()
-            .proxy(YouTube.proxy)
-            .apply {
-                YouTube.proxyAuth?.let { auth ->
-                    proxyAuthenticator { _, response ->
-                        response.request.newBuilder()
-                            .header("Proxy-Authorization", auth)
-                            .build()
-                    }
-                }
-            }.build()
-
+        val okHttpClient = getOkHttpClient()
         val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setDefaultRequestProperties(data.streamHeaders)
 
@@ -523,10 +621,8 @@ class VideoPlayerManager(
             videoSource
         }
 
-        // Mute main player so native music video audio plays without overlap
-        playerProvider()?.volume = 0f
-        player.volume = 1f
-        player.setMediaSource(finalSource, startPositionMs)
+        val safeStartPos = startPositionMs.coerceAtLeast(0L)
+        player.setMediaSource(finalSource, safeStartPos)
         player.prepare()
         player.playbackParameters = playerProvider()?.playbackParameters ?: PlaybackParameters.DEFAULT
         player.playWhenReady = isPlaying && isPlaybackActive
@@ -543,6 +639,9 @@ class VideoPlayerManager(
 
     fun release() {
         runOnMain {
+            preloadJob?.cancel()
+            preloadJob = null
+            preloadingMediaId = null
             streamLoadJob?.cancel()
             boundMainPlayer?.removeListener(mainPlayerListener)
             boundMainPlayer?.volume = 1f
@@ -554,6 +653,7 @@ class VideoPlayerManager(
             _isVideoPlaying.value = false
             videoStreamCache.evictAll()
             songToMusicVideoCache.evictAll()
+            cachedOkHttpClient = null
         }
     }
 }

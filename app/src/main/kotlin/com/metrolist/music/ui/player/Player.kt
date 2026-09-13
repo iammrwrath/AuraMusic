@@ -797,10 +797,16 @@ fun BottomSheetPlayer(
                 delay(100) // Update more frequently for smoother progress bar
                 if (sliderPosition == null) { // Only update if user isn't dragging
                     val video = if (isVideoMode) videoPlayerManager.videoPlayer.value else null
-                    if (video != null && video.playbackState == Player.STATE_READY) {
+                    if (video != null && (video.playbackState == Player.STATE_READY || video.playbackState == Player.STATE_BUFFERING)) {
                         position = video.currentPosition
                         video.duration.takeIf { it > 0 }?.let { duration = it }
-                    } else {
+
+                        // Keep main player loosely aligned in background so swapping back to Song is instant
+                        val mainPlayer = playerConnection.player
+                        if (kotlin.math.abs(mainPlayer.currentPosition - video.currentPosition) > 600) {
+                            mainPlayer.seekTo(video.currentPosition)
+                        }
+                    } else if (!isVideoMode) {
                         position = playerConnection.player.currentPosition
                         // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
                         playerConnection.player.duration.takeIf { it > 0 }?.let { duration = it }
@@ -811,8 +817,8 @@ fun BottomSheetPlayer(
     }
 
     // Also update position when playback state changes (e.g., song change, seek)
-    LaunchedEffect(playbackState, mediaMetadata?.id) {
-        if (!isCasting) {
+    LaunchedEffect(playbackState, mediaMetadata?.id, isVideoMode) {
+        if (!isCasting && !isVideoMode) {
             position = playerConnection.player.currentPosition
             // Prefer the song's known duration (from metadata, available instantly from the restored
             // queue) so the slider range is right even when restored paused / before the stream
@@ -2196,6 +2202,12 @@ fun BottomSheetPlayer(
                             isVideoAvailable = isVideoAvailable,
                             onModeChange = { enabled ->
                                 showInlineLyrics = false
+                                if (!enabled) {
+                                    val videoPos = videoPlayerManager.videoPlayer.value?.currentPosition
+                                    if (videoPos != null && videoPos > 0) {
+                                        position = videoPos
+                                    }
+                                }
                                 videoPlayerManager.setVideoMode(enabled)
                             },
                             modifier = Modifier.padding(bottom = 8.dp),
@@ -2250,6 +2262,12 @@ fun BottomSheetPlayer(
                             isVideoAvailable = isVideoAvailable,
                             onModeChange = { enabled ->
                                 showInlineLyrics = false
+                                if (!enabled) {
+                                    val videoPos = videoPlayerManager.videoPlayer.value?.currentPosition
+                                    if (videoPos != null && videoPos > 0) {
+                                        position = videoPos
+                                    }
+                                }
                                 videoPlayerManager.setVideoMode(enabled)
                             },
                         )
