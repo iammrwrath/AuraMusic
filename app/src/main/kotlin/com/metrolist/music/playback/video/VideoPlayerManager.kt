@@ -31,6 +31,7 @@ import com.metrolist.music.utils.InnerTubeXPlayer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,6 +97,8 @@ class VideoPlayerManager(
     private var preloadingMediaId: String? = null
     private var boundMainPlayer: ExoPlayer? = null
     private var isPlaybackActive = true
+    private var isSwitchingToSong = false
+    private var isInternalSeek = false
 
     private var cachedOkHttpClient: OkHttpClient? = null
     private var lastProxy = YouTube.proxy
@@ -126,6 +129,42 @@ class VideoPlayerManager(
         return newClient
     }
 
+    private fun completeSongToVideoHandoff() {
+        val video = _videoPlayer.value ?: return
+        if (video.volume >= 1f) return
+        val mainPlayer = playerProvider()
+
+        if (mainPlayer != null) {
+            val mainPos = mainPlayer.currentPosition
+            val videoPos = video.currentPosition
+            val drift = kotlin.math.abs(videoPos - mainPos)
+            // If drift is significant (> 1500ms), seek video; otherwise let it play smoothly to avoid re-buffering
+            if (drift > 1500L) {
+                video.seekTo(mainPos.coerceAtLeast(0L))
+            }
+            mainPlayer.volume = 0f
+        }
+        video.volume = 1f
+        _isVideoLoading.value = false
+    }
+
+    private fun completeVideoToSongHandoff() {
+        if (!isSwitchingToSong) return
+        isSwitchingToSong = false
+        val main = playerProvider()
+        val video = _videoPlayer.value
+
+        // Unmute main audio now that it is decoded and ready to output sound
+        main?.volume = 1f
+
+        // Stop the video player cleanly
+        video?.volume = 0f
+        video?.stop()
+        video?.clearMediaItems()
+        _isVideoLoading.value = false
+        _isVideoPlaying.value = false
+    }
+
     private val videoPlayerListener = object : Player.Listener {
         override fun onPlayerError(error: PlaybackException) {
             Timber.tag(TAG).e(error, "Video ExoPlayer error: %s", error.message)
@@ -141,29 +180,31 @@ class VideoPlayerManager(
             _isVideoPlaying.value = isPlaying
         }
 
+        override fun onRenderedFirstFrame() {
+            if (_isVideoMode.value) {
+                completeSongToVideoHandoff()
+            }
+        }
+
         override fun onPlaybackStateChanged(playbackState: Int) {
             when (playbackState) {
                 Player.STATE_BUFFERING -> {
-                    _isVideoLoading.value = true
+                    if (_videoPlayer.value?.volume == 0f) {
+                        _isVideoLoading.value = true
+                    }
                 }
                 Player.STATE_READY -> {
-                    _isVideoLoading.value = false
                     _videoError.value = null
-                    if (_isVideoMode.value) {
-                        val mainPlayer = playerProvider()
-                        val video = _videoPlayer.value
-                        if (video != null && video.volume < 1f) {
-                            // Seamless handoff: reconcile any slight position drift during buffer phase
-                            if (mainPlayer != null) {
-                                val mainPos = mainPlayer.currentPosition
-                                val videoPos = video.currentPosition
-                                if (kotlin.math.abs(videoPos - mainPos) > 120) {
-                                    video.seekTo(mainPos.coerceAtLeast(0L))
-                                }
-                                mainPlayer.volume = 0f
+                    if (_isVideoMode.value && _videoPlayer.value?.volume == 0f) {
+                        // Fallback in case onRenderedFirstFrame was not called or delayed
+                        scope.launch(Dispatchers.Main) {
+                            delay(100)
+                            if (_isVideoMode.value && _videoPlayer.value?.volume == 0f) {
+                                completeSongToVideoHandoff()
                             }
-                            video.volume = 1f
                         }
+                    } else if (_isVideoMode.value) {
+                        _isVideoLoading.value = false
                     }
                 }
                 Player.STATE_ENDED -> {
@@ -183,13 +224,15 @@ class VideoPlayerManager(
 
     private val mainPlayerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (_isVideoMode.value && isPlaybackActive) {
+            if (isSwitchingToSong && isPlaying) {
+                completeVideoToSongHandoff()
+            } else if (_isVideoMode.value && isPlaybackActive && !isSwitchingToSong) {
                 _videoPlayer.value?.playWhenReady = isPlaying
             }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            if (_isVideoMode.value && isPlaybackActive) {
+            if (_isVideoMode.value && isPlaybackActive && !isSwitchingToSong) {
                 _videoPlayer.value?.playWhenReady = playWhenReady
             }
         }
@@ -199,7 +242,11 @@ class VideoPlayerManager(
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
-            if (_isVideoMode.value && isPlaybackActive) {
+            if (isInternalSeek) {
+                isInternalSeek = false
+                return
+            }
+            if (_isVideoMode.value && isPlaybackActive && !isSwitchingToSong) {
                 if (reason == Player.DISCONTINUITY_REASON_SEEK) {
                     _videoPlayer.value?.seekTo(newPosition.positionMs)
                 }
@@ -213,6 +260,9 @@ class VideoPlayerManager(
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (isSwitchingToSong && playbackState == Player.STATE_READY) {
+                completeVideoToSongHandoff()
+            }
             if (_isVideoMode.value && playbackState == Player.STATE_ENDED) {
                 // If main player audio track ends earlier than the video, pause main player and let video continue
                 playerProvider()?.pause()
@@ -323,35 +373,52 @@ class VideoPlayerManager(
             attachMainPlayerListener()
 
             if (enabled) {
-                // Song -> Video: Keep mainPlayer audio playing seamlessly without silence dropouts
+                isSwitchingToSong = false
                 val mainPlayer = playerProvider()
                 val mediaId = mainPlayer?.currentMediaItem?.mediaId ?: currentMediaId
                 if (mediaId != null) {
                     loadAndPlayVideo(mediaId)
                 }
             } else {
-                // Video -> Song: Seamlessly transfer playback position and state to mainPlayer
                 val video = _videoPlayer.value
                 val main = playerProvider()
-                val videoPos = video?.currentPosition ?: 0L
-                val wasPlaying = (video?.isPlaying == true) || (video?.playWhenReady == true)
+                if (video == null || main == null) {
+                    main?.volume = 1f
+                    _videoPlayer.value?.stop()
+                    _videoPlayer.value?.clearMediaItems()
+                    _isVideoLoading.value = false
+                    _isVideoPlaying.value = false
+                    return@runOnMain
+                }
 
-                if (main != null) {
-                    val targetDuration = if (main.duration > 0) main.duration else Long.MAX_VALUE
-                    main.seekTo(videoPos.coerceIn(0L, targetDuration))
-                    main.volume = 1f
-                    main.playWhenReady = wasPlaying
-                    if (wasPlaying) {
-                        main.play()
-                    } else {
-                        main.pause()
+                isSwitchingToSong = true
+                val videoPos = video.currentPosition
+                val wasPlaying = video.isPlaying || video.playWhenReady
+
+                // 1. Keep video playing smoothly so user hears zero silence!
+                // 2. Prepare mainPlayer at the exact video position, muted
+                main.volume = 0f
+                val targetDuration = if (main.duration > 0) main.duration else Long.MAX_VALUE
+                isInternalSeek = true
+                main.seekTo(videoPos.coerceIn(0L, targetDuration))
+                main.playWhenReady = wasPlaying
+                if (wasPlaying) {
+                    main.play()
+                } else {
+                    main.pause()
+                }
+
+                if (!wasPlaying) {
+                    completeVideoToSongHandoff()
+                } else {
+                    // Safety fallback: if mainPlayer takes longer than 800ms to buffer, complete handoff
+                    scope.launch(Dispatchers.Main) {
+                        delay(800)
+                        if (isSwitchingToSong) {
+                            completeVideoToSongHandoff()
+                        }
                     }
                 }
-                video?.volume = 0f
-                video?.stop()
-                video?.clearMediaItems()
-                _isVideoLoading.value = false
-                _isVideoPlaying.value = false
             }
         }
     }
@@ -366,6 +433,7 @@ class VideoPlayerManager(
             _videoPlayer.value?.seekTo(safePos)
             val mainPlayer = playerProvider()
             if (mainPlayer != null) {
+                isInternalSeek = true
                 val target = if (mainPlayer.duration > 0) safePos.coerceAtMost(mainPlayer.duration) else safePos
                 mainPlayer.seekTo(target)
             }
@@ -639,6 +707,8 @@ class VideoPlayerManager(
 
     fun release() {
         runOnMain {
+            isSwitchingToSong = false
+            isInternalSeek = false
             preloadJob?.cancel()
             preloadJob = null
             preloadingMediaId = null

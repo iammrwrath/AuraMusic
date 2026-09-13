@@ -800,12 +800,6 @@ fun BottomSheetPlayer(
                     if (video != null && (video.playbackState == Player.STATE_READY || video.playbackState == Player.STATE_BUFFERING)) {
                         position = video.currentPosition
                         video.duration.takeIf { it > 0 }?.let { duration = it }
-
-                        // Keep main player loosely aligned in background so swapping back to Song is instant
-                        val mainPlayer = playerConnection.player
-                        if (kotlin.math.abs(mainPlayer.currentPosition - video.currentPosition) > 600) {
-                            mainPlayer.seekTo(video.currentPosition)
-                        }
                     } else if (!isVideoMode) {
                         position = playerConnection.player.currentPosition
                         // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
