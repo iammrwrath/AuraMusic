@@ -137,4 +137,24 @@ class VideoPlayerManagerTest {
         manager.preloadMusicVideoId("unknown_track_id_12345")
         assertTrue(manager.isVideoAvailable.value)
     }
+
+    @Test
+    fun `setPlaybackActive and lifecycle transitions execute smoothly without throwing`() {
+        manager.setVideoMode(true)
+        manager.setPlaybackActive(false)
+        manager.setPlaybackActive(true)
+        manager.onAppBackgrounded()
+        manager.onAppForegrounded()
+        assertTrue(manager.isVideoMode.value)
+    }
+
+    @Test
+    fun `rapid video toggle cancels background loading cleanly`() {
+        manager.setVideoMode(true)
+        assertTrue(manager.isVideoMode.value)
+        manager.loadAndPlayVideo("quick_toggle_track")
+        manager.setVideoMode(false)
+        assertFalse(manager.isVideoMode.value)
+        assertEquals(null, manager.videoPlayer.value)
+    }
 }

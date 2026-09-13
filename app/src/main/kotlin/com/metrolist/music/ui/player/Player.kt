@@ -800,7 +800,7 @@ fun BottomSheetPlayer(
                     if (video != null && (video.playbackState == Player.STATE_READY || video.playbackState == Player.STATE_BUFFERING)) {
                         position = video.currentPosition
                         video.duration.takeIf { it > 0 }?.let { duration = it }
-                    } else if (!isVideoMode) {
+                    } else {
                         position = playerConnection.player.currentPosition
                         // Don't clobber a valid (metadata-derived) duration with 0/UNSET mid-resolve.
                         playerConnection.player.duration.takeIf { it > 0 }?.let { duration = it }
@@ -812,13 +812,19 @@ fun BottomSheetPlayer(
 
     // Also update position when playback state changes (e.g., song change, seek)
     LaunchedEffect(playbackState, mediaMetadata?.id, isVideoMode) {
-        if (!isCasting && !isVideoMode) {
-            position = playerConnection.player.currentPosition
-            // Prefer the song's known duration (from metadata, available instantly from the restored
-            // queue) so the slider range is right even when restored paused / before the stream
-            // resolves; fall back to the player's duration once it is known.
-            duration = (mediaMetadata?.duration?.takeIf { it > 0 }?.toLong()?.times(1000L))
-                ?: playerConnection.player.duration
+        if (!isCasting) {
+            val video = if (isVideoMode) videoPlayerManager.videoPlayer.value else null
+            if (video != null && (video.playbackState == Player.STATE_READY || video.playbackState == Player.STATE_BUFFERING)) {
+                position = video.currentPosition
+                video.duration.takeIf { it > 0 }?.let { duration = it }
+            } else {
+                position = playerConnection.player.currentPosition
+                // Prefer the song's known duration (from metadata, available instantly from the restored
+                // queue) so the slider range is right even when restored paused / before the stream
+                // resolves; fall back to the player's duration once it is known.
+                duration = (mediaMetadata?.duration?.takeIf { it > 0 }?.toLong()?.times(1000L))
+                    ?: playerConnection.player.duration
+            }
         }
     }
 

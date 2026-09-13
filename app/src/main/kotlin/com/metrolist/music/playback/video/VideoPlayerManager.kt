@@ -10,6 +10,7 @@ import android.net.ConnectivityManager
 import android.os.Looper
 import android.util.LruCache
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -211,7 +212,20 @@ class VideoPlayerManager(
                     _isVideoLoading.value = false
                     _isVideoPlaying.value = false
                     if (_isVideoMode.value) {
-                        playerProvider()?.seekToNext()
+                        val mainPlayer = playerProvider()
+                        if (mainPlayer != null) {
+                            if (mainPlayer.repeatMode == Player.REPEAT_MODE_ONE) {
+                                isInternalSeek = true
+                                mainPlayer.seekTo(0L)
+                                mainPlayer.play()
+                                _videoPlayer.value?.seekTo(0L)
+                                _videoPlayer.value?.play()
+                            } else if (mainPlayer.hasNextMediaItem()) {
+                                mainPlayer.seekToNextMediaItem()
+                            } else {
+                                mainPlayer.seekToNext()
+                            }
+                        }
                     }
                 }
                 Player.STATE_IDLE -> {
@@ -247,8 +261,11 @@ class VideoPlayerManager(
                 return
             }
             if (_isVideoMode.value && isPlaybackActive && !isSwitchingToSong) {
-                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
                     _videoPlayer.value?.seekTo(newPosition.positionMs)
+                    if (newPosition.positionMs == 0L && (playerProvider()?.isPlaying == true || playerProvider()?.playWhenReady == true)) {
+                        _videoPlayer.value?.play()
+                    }
                 }
             }
         }
@@ -264,14 +281,17 @@ class VideoPlayerManager(
                 completeVideoToSongHandoff()
             }
             if (_isVideoMode.value && playbackState == Player.STATE_ENDED) {
-                // If main player audio track ends earlier than the video, pause main player and let video continue
-                playerProvider()?.pause()
+                val main = playerProvider()
+                // If main player audio track ends earlier than the video and not looping, pause main player and let video continue
+                if (main?.repeatMode != Player.REPEAT_MODE_ONE) {
+                    main?.pause()
+                }
             }
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val newId = mediaItem?.mediaId
-            if (newId != currentMediaId) {
+            if (newId != currentMediaId || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
                 currentMediaId = newId
                 if (_isVideoMode.value && newId != null) {
                     loadAndPlayVideo(newId)
@@ -388,6 +408,7 @@ class VideoPlayerManager(
                     loadAndPlayVideo(mediaId)
                 }
             } else {
+                streamLoadJob?.cancel()
                 val video = _videoPlayer.value
                 val main = playerProvider()
                 if (video == null || main == null) {
@@ -466,14 +487,40 @@ class VideoPlayerManager(
 
     fun setPlaybackActive(active: Boolean) {
         runOnMain {
+            if (isPlaybackActive == active) return@runOnMain
             isPlaybackActive = active
+            val video = _videoPlayer.value
+            val mainPlayer = playerProvider()
             if (!active) {
-                _videoPlayer.value?.playWhenReady = false
-            } else if (_isVideoMode.value) {
-                val mainPlayer = playerProvider()
-                val video = _videoPlayer.value
-                if (mainPlayer != null && video != null) {
-                    video.playWhenReady = mainPlayer.isPlaying
+                // Backgrounded, collapsed to mini-player, or covered by lyrics:
+                // Hand audio smoothly to mainPlayer with zero silence.
+                if (_isVideoMode.value && video != null && mainPlayer != null) {
+                    val wasPlaying = video.isPlaying || video.playWhenReady || mainPlayer.isPlaying
+                    val pos = video.currentPosition
+                    if (pos > 0) {
+                        isInternalSeek = true
+                        val target = if (mainPlayer.duration > 0) pos.coerceAtMost(mainPlayer.duration) else pos
+                        mainPlayer.seekTo(target)
+                    }
+                    mainPlayer.volume = 1f
+                    if (wasPlaying) {
+                        mainPlayer.play()
+                    }
+                    video.volume = 0f
+                    video.playWhenReady = false
+                } else {
+                    video?.playWhenReady = false
+                }
+            } else if (_isVideoMode.value && video != null && mainPlayer != null) {
+                // Foregrounded / re-expanded: sync video to mainPlayer and hand audio back to video
+                val mainPos = mainPlayer.currentPosition
+                val isPlaying = mainPlayer.isPlaying || mainPlayer.playWhenReady
+                if (mainPos > 0) {
+                    video.seekTo(mainPos)
+                }
+                video.playWhenReady = isPlaying
+                if (video.playbackState == Player.STATE_READY) {
+                    completeSongToVideoHandoff()
                 }
             }
         }
@@ -605,7 +652,7 @@ class VideoPlayerManager(
                         val preloaded = videoStreamCache[cachedVideoId] ?: videoStreamCache[mediaId]
                         if (preloaded?.videoUrl != null) {
                             withContext(Dispatchers.Main) {
-                                if (currentMediaId != mediaId) return@withContext
+                                if (currentMediaId != mediaId || !_isVideoMode.value) return@withContext
                                 _isVideoAvailable.value = true
                                 val currentPos = playerProvider()?.currentPosition ?: 0L
                                 val isPlaying = playerProvider()?.playWhenReady ?: playerProvider()?.isPlaying ?: false
@@ -669,8 +716,8 @@ class VideoPlayerManager(
                     }
 
                     withContext(Dispatchers.Main) {
-                        // Guard against race conditions when user rapidly skips songs
-                        if (currentMediaId != mediaId) return@withContext
+                        // Guard against race conditions when user rapidly skips songs or toggles off video mode
+                        if (currentMediaId != mediaId || !_isVideoMode.value) return@withContext
 
                         if (data?.videoUrl != null) {
                             val streamData = data
@@ -707,6 +754,14 @@ class VideoPlayerManager(
             val renderersFactory = DefaultRenderersFactory(context)
 
             player = ExoPlayer.Builder(context, renderersFactory)
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    false,
+                )
+                .setHandleAudioBecomingNoisy(true)
                 .build()
                 .apply {
                     volume = 0f // Start muted while buffering
