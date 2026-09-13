@@ -141,6 +141,7 @@ object Updater {
             
             // Parse architecture and variant from filename
             val (arch, variant) = when {
+                name.contains("izzy", ignoreCase = true) -> "universal" to "izzy"
                 name == "AuraMusic.apk" || name == "app-foss-debug.apk" || name == "app-foss-release.apk" -> "universal" to "foss"
                 name == "AuraMusic-with-Google-Cast.apk" || name == "app-gms-release.apk" || name == "app-gms-debug.apk" -> "universal" to "gms"
                 name.startsWith("app-") && name.endsWith("-release.apk") -> {
@@ -353,19 +354,30 @@ object Updater {
     fun getDownloadUrlForCurrentVariant(releaseInfo: ReleaseInfo): String? {
         val (currentArch, currentVariant) = getCurrentAppVariant()
         
-        return releaseInfo.assets
+        // Never allow an izzy APK to be downloaded by the in-app updater
+        val nonIzzyAssets = releaseInfo.assets.filter { 
+            it.variant != "izzy" && !it.name.contains("izzy", ignoreCase = true) 
+        }
+
+        // Exact canonical match first (AuraMusic.apk for FOSS, AuraMusic-with-Google-Cast.apk for GMS)
+        val canonicalName = if (currentVariant == "gms") "AuraMusic-with-Google-Cast.apk" else APK_NAME
+        nonIzzyAssets.find { it.name.equals(canonicalName, ignoreCase = true) }?.downloadUrl?.let { return it }
+
+        return nonIzzyAssets
             .find { it.architecture == currentArch && it.variant == currentVariant }
             ?.downloadUrl
-            ?: releaseInfo.assets.find { it.architecture == "universal" && it.variant == currentVariant }?.downloadUrl
-            ?: releaseInfo.assets.find { it.variant == currentVariant }?.downloadUrl
-            ?: releaseInfo.assets.firstOrNull()?.downloadUrl
+            ?: nonIzzyAssets.find { it.architecture == "universal" && it.variant == currentVariant }?.downloadUrl
+            ?: nonIzzyAssets.find { it.variant == currentVariant }?.downloadUrl
+            ?: nonIzzyAssets.firstOrNull()?.downloadUrl
     }
 
     /**
      * Get all available download URLs for a release
      */
     fun getAllDownloadUrls(releaseInfo: ReleaseInfo): Map<String, String> {
-        return releaseInfo.assets.associate { "${it.architecture}-${it.variant}" to it.downloadUrl }
+        return releaseInfo.assets
+            .filter { it.variant != "izzy" && !it.name.contains("izzy", ignoreCase = true) }
+            .associate { "${it.architecture}-${it.variant}" to it.downloadUrl }
     }
 
     /**

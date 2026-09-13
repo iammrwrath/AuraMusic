@@ -210,16 +210,14 @@ fun SettingsScreen(
                         )
                     )
                 }
-                if (BuildConfig.UPDATER_AVAILABLE) {
-                    add(
-                        Material3SettingsItem(
-                            icon = painterResource(R.drawable.update),
-                            title = { Text(stringResource(R.string.updater)) },
-                            description = { Text(stringResource(R.string.settings_desc_updater)) },
-                            onClick = { navController.navigate("settings/updater") }
-                        )
+                add(
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.update),
+                        title = { Text(stringResource(R.string.updater)) },
+                        description = { Text(stringResource(R.string.settings_desc_updater)) },
+                        onClick = { navController.navigate("settings/updater") }
                     )
-                }
+                )
                 val showChangelog = com.metrolist.music.LocalChangelogState.current
                 add(
                     Material3SettingsItem(
