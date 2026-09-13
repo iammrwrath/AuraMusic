@@ -15,14 +15,14 @@ concurrency:
 
 jobs:
   solve_issue:
-    name: Diagnose and Fix Issue
+    name: Diagnose, Fix and Publish Release
     if: >-
       contains(github.event.issue.labels.*.name, 'ai-fix') ||
       contains(github.event.issue.title, '[AI-Fix]') ||
       contains(github.event.issue.title, '[Crash]') ||
       contains(github.event.issue.title, '[Bug]')
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout Code
@@ -36,7 +36,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
-          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "🤖 **Antigravity AI**: Issue received! Analyzing flight recorder logs, stack traces, and codebase to formulate an automated fix..."
+          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body "🤖 **Antigravity AI**: Issue received! Analyzing flight recorder logs, stack traces, and codebase to formulate an automated fix and release a new APK version..."
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,7 +46,7 @@ jobs:
       - name: Run AI Diagnostic & Code Patching
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.6-flash' }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
@@ -68,47 +68,129 @@ jobs:
         if: hashFiles('ai_fix.patch') != ''
         run: chmod +x gradlew
 
-      - name: Compile and Verify Fix (assembleFossDebug)
+      - name: Bump Version for Auto-Fix Release
+        id: bump_version
         if: hashFiles('ai_fix.patch') != ''
-        run: ./gradlew assembleFossDebug --no-daemon
+        run: |
+          python3 .github/scripts/bump_version.py
 
-      - name: Upload Debug APK Artifact
+      - name: Verify Fix with Unit Tests
         if: hashFiles('ai_fix.patch') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-foss-debug-issue-${{ github.event.issue.number }}
-          path: app/build/outputs/apk/foss/debug/app-foss-debug.apk
+        run: ./gradlew testFossDebugUnitTest --no-daemon
 
-      - name: Create Pull Request & Notify
+      - name: Compile Release APK (assembleFossRelease)
+        if: hashFiles('ai_fix.patch') != ''
+        env:
+          METROLIST_APPLICATION_ID: com.metrolist.music
+          METROLIST_APP_NAME: AuraMusic
+        run: ./gradlew assembleFossRelease --no-daemon
+
+      - name: Package Release Assets
+        if: hashFiles('ai_fix.patch') != ''
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          python3 .github/scripts/prepare_release_assets.py --version "$NEW_VERSION" --out-dir release_assets
+
+      - name: Commit and Push Auto-Fix Branch
+        if: hashFiles('ai_fix.patch') != ''
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          BRANCH_NAME="fix/issue-${{ github.event.issue.number }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          git add -A
+          git commit -m "fix(core): AI auto-fix for issue #${{ github.event.issue.number }} (v${NEW_VERSION})" || true
+          git push origin "$BRANCH_NAME" --force || true
+
+      - name: Publish GitHub Release
+        if: hashFiles('ai_fix.patch') != ''
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          TAG="v${NEW_VERSION}"
+          BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
+
+          cat << EOF > release_body.md
+          # AuraMusic v${NEW_VERSION} - AI Auto-Fix for Issue #${ISSUE_NUMBER}
+
+          ### 🤖 Automated AI Fix & Release
+          This release was automatically generated, verified with unit tests, compiled, and published by the Antigravity AI Self-Healing engine in response to [Issue #${ISSUE_NUMBER}](https://github.com/${GH_REPO}/issues/${ISSUE_NUMBER}).
+
+          ---
+          EOF
+
+          if [ -f "ai_solution_summary.md" ]; then
+            cat ai_solution_summary.md >> release_body.md
+          fi
+
+          cat << EOF >> release_body.md
+
+          ---
+          ### 📦 Download Assets:
+          - **[AuraMusic.apk](https://github.com/${GH_REPO}/releases/download/${TAG}/AuraMusic.apk)** (Direct update)
+          - **[AuraMusic-v${NEW_VERSION}.apk](https://github.com/${GH_REPO}/releases/download/${TAG}/AuraMusic-v${NEW_VERSION}.apk)**
+          - **[AuraMusic-v${NEW_VERSION}.zip](https://github.com/${GH_REPO}/releases/download/${TAG}/AuraMusic-v${NEW_VERSION}.zip)**
+          EOF
+
+          gh release create "$TAG" \
+            --repo "$GH_REPO" \
+            --target "$BRANCH_NAME" \
+            --title "v${NEW_VERSION} - AI Auto-Fix for #${ISSUE_NUMBER}" \
+            --notes-file release_body.md \
+            --latest \
+            release_assets/AuraMusic.apk \
+            release_assets/AuraMusic-v${NEW_VERSION}.apk \
+            release_assets/AuraMusic-v${NEW_VERSION}.zip
+
+          echo "Successfully published release $TAG!"
+
+      - name: Create Pull Request & Notify Issue
         if: always() && hashFiles('ai_solution_summary.md') != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           if [ -f "ai_fix.patch" ]; then
+            NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
             BRANCH_NAME="fix/issue-${ISSUE_NUMBER}"
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git checkout -b "$BRANCH_NAME"
-            git add -A
-            git commit -m "fix(core): automated AI patch for issue #${ISSUE_NUMBER}" || true
-            git push origin "$BRANCH_NAME" --force || true
 
             PR_URL=$(gh pr create \
               --repo "$GH_REPO" \
-              --title "fix: automated AI resolution for issue #${ISSUE_NUMBER}" \
+              --title "fix: automated AI resolution for issue #${ISSUE_NUMBER} (v${NEW_VERSION})" \
               --body-file "ai_solution_summary.md" \
               --head "$BRANCH_NAME" \
               --base "main" 2>/dev/null || echo "")
 
-            echo "" >> ai_solution_summary.md
-            echo "---" >> ai_solution_summary.md
-            echo "✅ **Build Status**: Verified & compiled cleanly!" >> ai_solution_summary.md
-            if [ -n "$PR_URL" ]; then
-              echo "🔗 **Pull Request**: ${PR_URL}" >> ai_solution_summary.md
-            fi
-            echo "📦 **Download Fixed APK**: Check the Action Run Artifacts to download and test directly on your phone!" >> ai_solution_summary.md
-          fi
+            cat << EOF > issue_comment.md
+          ## 🎉 AI Auto-Fix Completed & New Release Published!
 
-          gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file "ai_solution_summary.md" || true
+          The AI self-healing engine has diagnosed the issue, applied the verified code fix, and **published a new APK version** to GitHub Releases!
+
+          ---
+
+          ### 🚀 New Release: [**v${NEW_VERSION}**](https://github.com/${GH_REPO}/releases/tag/v${NEW_VERSION})
+
+          - 📥 **Direct APK Download**: [**AuraMusic.apk (v${NEW_VERSION})**](https://github.com/${GH_REPO}/releases/download/v${NEW_VERSION}/AuraMusic.apk)
+          - 📦 **Versioned APK**: [**AuraMusic-v${NEW_VERSION}.apk**](https://github.com/${GH_REPO}/releases/download/v${NEW_VERSION}/AuraMusic-v${NEW_VERSION}.apk)
+          - 🗜️ **ZIP Bundle**: [**AuraMusic-v${NEW_VERSION}.zip**](https://github.com/${GH_REPO}/releases/download/v${NEW_VERSION}/AuraMusic-v${NEW_VERSION}.zip)
+          - 🔄 **In-App Update**: You can also update directly within AuraMusic under **Settings ➔ Updater ➔ Check for Updates**.
+          EOF
+
+            if [ -n "$PR_URL" ]; then
+              echo "- 🔗 **Pull Request**: ${PR_URL}" >> issue_comment.md
+            fi
+
+            echo "" >> issue_comment.md
+            echo "---" >> issue_comment.md
+            cat ai_solution_summary.md >> issue_comment.md
+
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file issue_comment.md || true
+            gh issue edit "$ISSUE_NUMBER" --repo "$GH_REPO" --add-label "fixed" || true
+          else
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file ai_solution_summary.md || true
+          fi

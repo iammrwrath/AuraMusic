@@ -105,5 +105,30 @@ class VideoPlayerManagerTest {
         assertEquals(null, manager.videoError.value)
         assertFalse(manager.isVideoLoading.value)
         assertTrue(manager.isVideoAvailable.value)
+        assertFalse(manager.isVideoPlaying.value)
+    }
+
+    @Test
+    fun `togglePlayPause and seekTo execute cleanly without active player`() {
+        manager.togglePlayPause()
+        manager.seekTo(15000L)
+        assertFalse(manager.isVideoPlaying.value)
+    }
+
+    @Test
+    fun `preloadMusicVideoId runs safely without throwing`() {
+        manager.preloadMusicVideoId("FrsOnNxIrg8")
+        assertTrue(manager.isVideoAvailable.value)
+    }
+
+    @Test
+    fun `loadAndPlayVideo and setVideoMode execute safely without throwing`() {
+        manager.setVideoMode(true)
+        manager.loadAndPlayVideo("FrsOnNxIrg8")
+        manager.preloadMusicVideoId("FrsOnNxIrg8")
+        manager.togglePlayPause()
+        manager.seekTo(5000L)
+        manager.setVideoMode(false)
+        assertFalse(manager.isVideoMode.value)
     }
 }

@@ -85,14 +85,17 @@ fun PlayerVideoView(
     val playerConnection = LocalPlayerConnection.current ?: return
     val videoPlayer by videoPlayerManager.videoPlayer.collectAsState()
     val isVideoLoading by videoPlayerManager.isVideoLoading.collectAsState()
+    val isVideoPlaying by videoPlayerManager.isVideoPlaying.collectAsState()
     val videoError by videoPlayerManager.videoError.collectAsState()
     val isPlaying by playerConnection.isPlaying.collectAsState()
     val isFullscreen by videoPlayerManager.isFullscreen.collectAsState()
     val areControlsVisible by videoPlayerManager.areControlsVisible.collectAsState()
 
+    val effectivePlaying = isVideoPlaying || isPlaying
+
     // Auto-hide controls after 3.5 seconds when playing
-    LaunchedEffect(areControlsVisible, isPlaying) {
-        if (areControlsVisible && isPlaying) {
+    LaunchedEffect(areControlsVisible, effectivePlaying) {
+        if (areControlsVisible && effectivePlaying) {
             delay(3500)
             videoPlayerManager.setControlsVisible(false)
         }
@@ -197,7 +200,7 @@ fun PlayerVideoView(
                 ) {
                     // Center Play/Pause button
                     IconButton(
-                        onClick = { playerConnection.player.togglePlayPause() },
+                        onClick = { videoPlayerManager.togglePlayPause() },
                         modifier = Modifier
                             .size(64.dp)
                             .align(Alignment.Center)
@@ -205,7 +208,7 @@ fun PlayerVideoView(
                             .background(Color.Black.copy(alpha = 0.5f)),
                     ) {
                         Icon(
-                            painter = painterResource(if (isPlaying) R.drawable.pause else R.drawable.play),
+                            painter = painterResource(if (effectivePlaying) R.drawable.pause else R.drawable.play),
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(36.dp),

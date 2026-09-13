@@ -87,6 +87,8 @@ object FlightRecorder {
         }
 
         return buildString {
+            appendLine("> 🤖 **AI Auto-Fix & Release Active**: Submitting this issue will trigger the automated AI diagnostic and patching pipeline. Once the fix is verified, a new APK version will be compiled and published automatically!")
+            appendLine()
             appendLine("### 📱 Device & Environment")
             appendLine("- **Manufacturer / Model:** ${Build.MANUFACTURER} ${Build.MODEL}")
             appendLine("- **Android OS:** ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")

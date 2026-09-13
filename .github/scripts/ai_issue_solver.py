@@ -20,20 +20,31 @@ def get_env_var(name: str, default: str = "") -> str:
 def search_candidate_files(issue_text: str):
     """Finds source files referenced in the issue body or stack trace."""
     referenced_files = set()
-    # Find Kotlin and Java files mentioned
+    # Find Kotlin and Java files mentioned explicitly
     matches = re.findall(r'([A-Za-z0-9_]+\.(?:kt|java))', issue_text)
     for filename in set(matches):
         for path in Path("app/src/main").rglob(filename):
             referenced_files.add(str(path))
         for path in Path("innertube/src/main").rglob(filename):
             referenced_files.add(str(path))
+
+    # Also match PascalCase class names mentioned in stack traces or logs
+    class_matches = re.findall(r'\b([A-Z][A-Za-z0-9_]{3,})\b', issue_text)
+    for cls in set(class_matches):
+        for ext in ('.kt', '.java'):
+            target_name = cls + ext
+            for path in Path("app/src/main").rglob(target_name):
+                referenced_files.add(str(path))
+            for path in Path("innertube/src/main").rglob(target_name):
+                referenced_files.add(str(path))
+
     return list(referenced_files)
 
-def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-3.6-flash") -> str:
+def call_gemini_api(api_key: str, prompt: str, primary_model: str = "gemini-2.5-flash") -> str:
     """Calls Gemini Flash model via REST API with fallback support."""
     models_to_try = [primary_model]
     # Officially supported Gemini models in Google AI Studio / Generative Language API
-    for fallback in ["gemini-3.6-flash", "gemini-3-flash", "gemini-3.6-pro", "gemini-2.5-flash"]:
+    for fallback in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-3.6-flash", "gemini-3-flash"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
@@ -202,7 +213,7 @@ Format your response strictly as follows:
             f.write(f"### 🤖 AI Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n\n> ⚠️ Automated patch could not be automatically applied cleanly to the branch. Please review the diagnosis and patch above to apply manually.\n")
         sys.exit(0)
 
-    print("[✓] Patch applied successfully!")
+    print("[OK] Patch applied successfully!")
     with open("ai_solution_summary.md", "w", encoding="utf-8") as f:
         f.write(f"### 🤖 AI Self-Healing Diagnosis for Issue #{issue_number}\n\n{diagnosis}\n\n```diff\n{patch_content}\n```\n")
 

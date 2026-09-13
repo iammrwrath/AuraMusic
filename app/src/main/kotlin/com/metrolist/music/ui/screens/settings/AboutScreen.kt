@@ -462,8 +462,8 @@ fun AboutScreen(
             items = listOf(
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.github),
-                    title = { Text("Report Issue (AI Auto-Fix)", fontWeight = FontWeight.SemiBold) },
-                    description = { Text("Open a GitHub issue with flight recorder logs for automated AI code diagnosis and fix") },
+                    title = { Text("Report Issue (AI Auto-Fix & Release)", fontWeight = FontWeight.SemiBold) },
+                    description = { Text("Open a GitHub issue with logs. The AI auto-fix will diagnose the issue and automatically publish an updated APK release") },
                     onClick = {
                         val report = FlightRecorder.buildDiagnosticReport(context)
                         val url = FlightRecorder.getGitHubIssueUrl(

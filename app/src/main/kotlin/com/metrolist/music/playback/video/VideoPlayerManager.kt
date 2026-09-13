@@ -7,6 +7,7 @@ package com.metrolist.music.playback.video
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.os.Looper
 import android.util.LruCache
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -33,6 +34,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -51,6 +53,16 @@ class VideoPlayerManager(
         private const val TAG = "VideoPlayerManager"
     }
 
+    private inline fun runOnMain(crossinline block: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block()
+        } else {
+            scope.launch(Dispatchers.Main) {
+                block()
+            }
+        }
+    }
+
     private val _isVideoMode = MutableStateFlow(false)
     val isVideoMode: StateFlow<Boolean> = _isVideoMode.asStateFlow()
 
@@ -59,6 +71,9 @@ class VideoPlayerManager(
 
     private val _isVideoLoading = MutableStateFlow(false)
     val isVideoLoading: StateFlow<Boolean> = _isVideoLoading.asStateFlow()
+
+    private val _isVideoPlaying = MutableStateFlow(false)
+    val isVideoPlaying: StateFlow<Boolean> = _isVideoPlaying.asStateFlow()
 
     private val _videoError = MutableStateFlow<String?>(null)
     val videoError: StateFlow<String?> = _videoError.asStateFlow()
@@ -86,6 +101,11 @@ class VideoPlayerManager(
             currentMediaId?.let { videoStreamCache.remove(it) }
             _videoError.value = error.message ?: "Video playback error"
             _isVideoLoading.value = false
+            _isVideoPlaying.value = false
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _isVideoPlaying.value = isPlaying
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -99,12 +119,14 @@ class VideoPlayerManager(
                 }
                 Player.STATE_ENDED -> {
                     _isVideoLoading.value = false
+                    _isVideoPlaying.value = false
                     if (_isVideoMode.value) {
                         playerProvider()?.seekToNext()
                     }
                 }
                 Player.STATE_IDLE -> {
                     _isVideoLoading.value = false
+                    _isVideoPlaying.value = false
                 }
             }
         }
@@ -114,6 +136,12 @@ class VideoPlayerManager(
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (_isVideoMode.value && isPlaybackActive) {
                 _videoPlayer.value?.playWhenReady = isPlaying
+            }
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            if (_isVideoMode.value && isPlaybackActive) {
+                _videoPlayer.value?.playWhenReady = playWhenReady
             }
         }
 
@@ -135,6 +163,13 @@ class VideoPlayerManager(
             }
         }
 
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (_isVideoMode.value && playbackState == Player.STATE_ENDED) {
+                // If main player audio track ends earlier than the video, pause main player and let video continue
+                playerProvider()?.pause()
+            }
+        }
+
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val newId = mediaItem?.mediaId
             if (newId != currentMediaId) {
@@ -144,13 +179,18 @@ class VideoPlayerManager(
                 } else if (newId == null) {
                     _videoPlayer.value?.stop()
                     _videoPlayer.value?.clearMediaItems()
+                    _isVideoPlaying.value = false
+                } else {
+                    preloadMusicVideoId(newId, mediaItem)
                 }
             }
         }
     }
 
     init {
-        attachMainPlayerListener()
+        runOnMain {
+            attachMainPlayerListener()
+        }
     }
 
     private fun attachMainPlayerListener() {
@@ -160,39 +200,99 @@ class VideoPlayerManager(
             boundMainPlayer = player
             player.addListener(mainPlayerListener)
             currentMediaId = player.currentMediaItem?.mediaId
+            currentMediaId?.let { preloadMusicVideoId(it, player.currentMediaItem) }
+        }
+    }
+
+    fun preloadMusicVideoId(mediaId: String, mediaItem: MediaItem? = null) {
+        if (songToMusicVideoCache.get(mediaId) != null) return
+        runOnMain {
+            if (songToMusicVideoCache.get(mediaId) != null) return@runOnMain
+            val currentItem = mediaItem ?: playerProvider()?.currentMediaItem
+            val tagMeta = currentItem?.localConfiguration?.tag as? MediaMetadata
+            if (tagMeta?.isVideoSong == true) {
+                songToMusicVideoCache.put(mediaId, mediaId)
+                _isVideoAvailable.value = true
+                return@runOnMain
+            }
+            val songTitle = tagMeta?.title
+                ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.title?.toString() else null)
+            val artistName = tagMeta?.artists?.firstOrNull()?.name
+                ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
+                ?: ""
+
+            scope.launch(Dispatchers.IO) {
+                try {
+                    val resolved = resolveMusicVideoId(mediaId, songTitle, artistName)
+                    if (resolved != null) {
+                        songToMusicVideoCache.put(mediaId, resolved)
+                        _isVideoAvailable.value = true
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).w(e, "Failed to preload music video for $mediaId")
+                }
+            }
         }
     }
 
     fun setVideoMode(enabled: Boolean) {
-        if (_isVideoMode.value == enabled) return
-        _isVideoMode.value = enabled
-        attachMainPlayerListener()
+        runOnMain {
+            if (_isVideoMode.value == enabled) return@runOnMain
+            _isVideoMode.value = enabled
+            attachMainPlayerListener()
 
-        if (enabled) {
-            val mainPlayer = playerProvider()
-            mainPlayer?.volume = 0f
-            val mediaId = mainPlayer?.currentMediaItem?.mediaId ?: currentMediaId
-            if (mediaId != null) {
-                loadAndPlayVideo(mediaId)
-            }
-        } else {
-            val video = _videoPlayer.value
-            val main = playerProvider()
-            if (video != null && main != null) {
-                val videoPos = video.currentPosition
-                if (videoPos > 0 && main.duration > 0) {
-                    main.seekTo(videoPos.coerceAtMost(main.duration))
+            if (enabled) {
+                val mainPlayer = playerProvider()
+                mainPlayer?.volume = 0f
+                val mediaId = mainPlayer?.currentMediaItem?.mediaId ?: currentMediaId
+                if (mediaId != null) {
+                    loadAndPlayVideo(mediaId)
                 }
+            } else {
+                val video = _videoPlayer.value
+                val main = playerProvider()
+                if (video != null && main != null) {
+                    val videoPos = video.currentPosition
+                    if (videoPos > 0 && main.duration > 0) {
+                        main.seekTo(videoPos.coerceAtMost(main.duration))
+                    }
+                }
+                main?.volume = 1f
+                _videoPlayer.value?.stop()
+                _videoPlayer.value?.clearMediaItems()
+                _isVideoLoading.value = false
+                _isVideoPlaying.value = false
             }
-            main?.volume = 1f
-            _videoPlayer.value?.stop()
-            _videoPlayer.value?.clearMediaItems()
-            _isVideoLoading.value = false
         }
     }
 
     fun toggleVideoMode() {
         setVideoMode(!_isVideoMode.value)
+    }
+
+    fun togglePlayPause() {
+        runOnMain {
+            val video = _videoPlayer.value
+            val main = playerProvider()
+            if (video != null) {
+                if (video.isPlaying) {
+                    video.pause()
+                    main?.pause()
+                } else {
+                    video.play()
+                    main?.play()
+                }
+            } else {
+                main?.let { if (it.isPlaying) it.pause() else it.play() }
+            }
+        }
+    }
+
+    fun seekTo(positionMs: Long) {
+        runOnMain {
+            _videoPlayer.value?.seekTo(positionMs)
+            playerProvider()?.seekTo(positionMs.coerceAtMost(playerProvider()?.duration ?: Long.MAX_VALUE))
+        }
     }
 
     fun setFullscreen(fullscreen: Boolean) {
@@ -212,14 +312,16 @@ class VideoPlayerManager(
     }
 
     fun setPlaybackActive(active: Boolean) {
-        isPlaybackActive = active
-        if (!active) {
-            _videoPlayer.value?.playWhenReady = false
-        } else if (_isVideoMode.value) {
-            val mainPlayer = playerProvider()
-            val video = _videoPlayer.value
-            if (mainPlayer != null && video != null) {
-                video.playWhenReady = mainPlayer.isPlaying
+        runOnMain {
+            isPlaybackActive = active
+            if (!active) {
+                _videoPlayer.value?.playWhenReady = false
+            } else if (_isVideoMode.value) {
+                val mainPlayer = playerProvider()
+                val video = _videoPlayer.value
+                if (mainPlayer != null && video != null) {
+                    video.playWhenReady = mainPlayer.isPlaying
+                }
             }
         }
     }
@@ -264,89 +366,115 @@ class VideoPlayerManager(
     }
 
     fun loadAndPlayVideo(mediaId: String) {
-        attachMainPlayerListener()
-        val mainPlayer = playerProvider()
-        currentMediaId = mediaId
-        _videoError.value = null
+        runOnMain {
+            attachMainPlayerListener()
+            val mainPlayer = playerProvider()
+            currentMediaId = mediaId
+            _videoError.value = null
 
-        // Immediately clear previous video frames to avoid showing stale frames
-        _videoPlayer.value?.stop()
-        _videoPlayer.value?.clearMediaItems()
+            // Immediately clear previous video frames to avoid showing stale frames
+            _videoPlayer.value?.stop()
+            _videoPlayer.value?.clearMediaItems()
 
-        val cachedVideoId = songToMusicVideoCache.get(mediaId) ?: mediaId
-        val cached = videoStreamCache[cachedVideoId]
-        if (cached?.videoUrl != null) {
-            Timber.tag(TAG).d("Playing cached video stream for $mediaId (id=$cachedVideoId)")
-            _isVideoAvailable.value = true
-            setupExoPlayerWithStream(cached, mainPlayer?.currentPosition ?: 0L, mainPlayer?.isPlaying ?: false)
-            return
-        }
+            // Safely capture metadata and state on Main thread before launching IO
+            val currentItem = mainPlayer?.currentMediaItem
+            val tagMeta = currentItem?.localConfiguration?.tag as? MediaMetadata
+            val isAlreadyVideo = tagMeta?.isVideoSong == true
+            val itemTitle = tagMeta?.title
+                ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.title?.toString() else null)
+            val itemArtist = tagMeta?.artists?.firstOrNull()?.name
+                ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
+                ?: ""
 
-        streamLoadJob?.cancel()
-        _isVideoLoading.value = true
+            val cachedVideoId = songToMusicVideoCache.get(mediaId) ?: mediaId
+            val cached = videoStreamCache[cachedVideoId]
+            if (cached?.videoUrl != null) {
+                Timber.tag(TAG).d("Playing cached video stream for $mediaId (id=$cachedVideoId)")
+                _isVideoAvailable.value = true
+                val currentPos = mainPlayer?.currentPosition ?: 0L
+                val isPlaying = mainPlayer?.playWhenReady ?: mainPlayer?.isPlaying ?: false
+                setupExoPlayerWithStream(cached, currentPos, isPlaying)
+                return@runOnMain
+            }
 
-        streamLoadJob = scope.launch(Dispatchers.IO) {
-            val song = database.songEntity(mediaId)
-            val audioQuality = audioQualityProvider()
-            val contentHints = ContentHints(
-                isExplicit = song?.explicit,
-                isUploaded = song?.isUploaded,
-            )
+            streamLoadJob?.cancel()
+            _isVideoLoading.value = true
 
-            var targetVideoId = songToMusicVideoCache.get(mediaId) ?: mediaId
-            var result = InnerTubeXPlayer.videoStreamForPlayback(
-                videoId = targetVideoId,
-                audioQuality = audioQuality,
-                connectivityManager = connectivityManager,
-                contentHints = contentHints,
-            )
+            streamLoadJob = scope.launch(Dispatchers.IO) {
+                try {
+                    val song = database.songEntity(mediaId)
+                    val audioQuality = audioQualityProvider()
+                    val contentHints = ContentHints(
+                        isExplicit = song?.explicit,
+                        isUploaded = song?.isUploaded,
+                    )
 
-            var data = result.getOrNull()
+                    var targetVideoId = songToMusicVideoCache.get(mediaId)
+                    if (targetVideoId == null && !isAlreadyVideo) {
+                        val songTitle = itemTitle ?: song?.title
+                        val artistName = itemArtist.ifBlank {
+                            database.song(mediaId).firstOrNull()?.artists?.firstOrNull()?.name.orEmpty()
+                        }
 
-            // If mediaId has no video formats (it's an ATV audio track), resolve the official music video
-            if (data?.videoUrl == null && targetVideoId == mediaId) {
-                val currentItem = playerProvider()?.currentMediaItem
-                val tagMeta = currentItem?.localConfiguration?.tag as? MediaMetadata
-                val songTitle = tagMeta?.title
-                    ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.title?.toString() else null)
-                    ?: song?.title
-                val artistName = tagMeta?.artists?.firstOrNull()?.name
-                    ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
-                    ?: ""
+                        val resolvedId = resolveMusicVideoId(mediaId, songTitle, artistName)
+                        if (resolvedId != null) {
+                            targetVideoId = resolvedId
+                            songToMusicVideoCache.put(mediaId, resolvedId)
+                            Timber.tag(TAG).i("Audio track $mediaId resolved to official music video $resolvedId")
+                        } else {
+                            targetVideoId = mediaId
+                        }
+                    } else if (targetVideoId == null) {
+                        targetVideoId = mediaId
+                    }
 
-                val resolvedId = resolveMusicVideoId(mediaId, songTitle, artistName)
-                if (resolvedId != null && resolvedId != mediaId) {
-                    Timber.tag(TAG).i("ATV track $mediaId resolved to music video $resolvedId. Extracting stream...")
-                    songToMusicVideoCache.put(mediaId, resolvedId)
-                    targetVideoId = resolvedId
-                    result = InnerTubeXPlayer.videoStreamForPlayback(
+                    var result = InnerTubeXPlayer.videoStreamForPlayback(
                         videoId = targetVideoId,
                         audioQuality = audioQuality,
                         connectivityManager = connectivityManager,
                         contentHints = contentHints,
                     )
-                    data = result.getOrNull()
-                }
-            }
+                    var data = result.getOrNull()
 
-            withContext(Dispatchers.Main) {
-                // Guard against race conditions when user rapidly skips songs
-                if (currentMediaId != mediaId) return@withContext
+                    // If targetVideoId stream extraction failed, fallback to mediaId if different
+                    if (data?.videoUrl == null && targetVideoId != mediaId) {
+                        Timber.tag(TAG).w("Resolved music video $targetVideoId stream extraction failed, falling back to $mediaId")
+                        result = InnerTubeXPlayer.videoStreamForPlayback(
+                            videoId = mediaId,
+                            audioQuality = audioQuality,
+                            connectivityManager = connectivityManager,
+                            contentHints = contentHints,
+                        )
+                        data = result.getOrNull()
+                        targetVideoId = mediaId
+                    }
 
-                _isVideoLoading.value = false
-                if (data?.videoUrl != null) {
-                    val streamData = data
-                    Timber.tag(TAG).i("Successfully resolved video stream for $mediaId (target=$targetVideoId): itag=${streamData.videoItag} ${streamData.videoWidth}x${streamData.videoHeight}")
-                    videoStreamCache.put(mediaId, streamData)
-                    videoStreamCache.put(targetVideoId, streamData)
-                    _isVideoAvailable.value = true
-                    val currentPos = playerProvider()?.currentPosition ?: 0L
-                    val isPlaying = playerProvider()?.isPlaying ?: false
-                    setupExoPlayerWithStream(streamData, currentPos, isPlaying)
-                } else {
-                    Timber.tag(TAG).w("No video stream returned for $mediaId")
-                    _isVideoAvailable.value = false
-                    _videoError.value = "Video not available"
+                    withContext(Dispatchers.Main) {
+                        // Guard against race conditions when user rapidly skips songs
+                        if (currentMediaId != mediaId) return@withContext
+
+                        _isVideoLoading.value = false
+                        if (data?.videoUrl != null) {
+                            val streamData = data
+                            Timber.tag(TAG).i("Successfully resolved video stream for $mediaId (target=$targetVideoId): itag=${streamData.videoItag} ${streamData.videoWidth}x${streamData.videoHeight}")
+                            videoStreamCache.put(mediaId, streamData)
+                            videoStreamCache.put(targetVideoId, streamData)
+                            _isVideoAvailable.value = true
+                            val currentPos = playerProvider()?.currentPosition ?: 0L
+                            val isPlaying = playerProvider()?.playWhenReady ?: playerProvider()?.isPlaying ?: false
+                            setupExoPlayerWithStream(streamData, currentPos, isPlaying)
+                        } else {
+                            Timber.tag(TAG).w("No video stream returned for $mediaId")
+                            _isVideoAvailable.value = false
+                            _videoError.value = "Video not available"
+                        }
+                    }
+                } catch (e: Exception) {
+                    Timber.tag(TAG).e(e, "Error loading video stream for $mediaId")
+                    withContext(Dispatchers.Main) {
+                        _isVideoLoading.value = false
+                        _videoError.value = e.message ?: "Failed to load video"
+                    }
                 }
             }
         }
@@ -414,15 +542,18 @@ class VideoPlayerManager(
     }
 
     fun release() {
-        streamLoadJob?.cancel()
-        boundMainPlayer?.removeListener(mainPlayerListener)
-        boundMainPlayer?.volume = 1f
-        boundMainPlayer = null
-        val player = _videoPlayer.value
-        player?.removeListener(videoPlayerListener)
-        player?.release()
-        _videoPlayer.value = null
-        videoStreamCache.evictAll()
-        songToMusicVideoCache.evictAll()
+        runOnMain {
+            streamLoadJob?.cancel()
+            boundMainPlayer?.removeListener(mainPlayerListener)
+            boundMainPlayer?.volume = 1f
+            boundMainPlayer = null
+            val player = _videoPlayer.value
+            player?.removeListener(videoPlayerListener)
+            player?.release()
+            _videoPlayer.value = null
+            _isVideoPlaying.value = false
+            videoStreamCache.evictAll()
+            songToMusicVideoCache.evictAll()
+        }
     }
 }

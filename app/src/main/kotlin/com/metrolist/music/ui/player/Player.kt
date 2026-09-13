@@ -229,6 +229,7 @@ fun BottomSheetPlayer(
     val videoPlayerManager = playerConnection.videoPlayerManager
     val isVideoMode by videoPlayerManager.isVideoMode.collectAsState()
     val isVideoAvailable by videoPlayerManager.isVideoAvailable.collectAsState()
+    val isVideoPlaying by videoPlayerManager.isVideoPlaying.collectAsState()
 
     val (useNewPlayerDesign, onUseNewPlayerDesignChange) =
         rememberPreference(
@@ -407,8 +408,8 @@ fun BottomSheetPlayer(
         }
     }
 
-    // Use Cast state when casting, otherwise local player
-    val effectiveIsPlaying = if (isCasting) castIsPlaying else isPlaying
+    // Use Cast state when casting, video playing state when in video mode, otherwise local player
+    val effectiveIsPlaying = if (isCasting) castIsPlaying else if (isVideoMode) (isVideoPlaying || isPlaying) else isPlaying
 
     // Use State objects for position/duration to pass to MiniPlayer without causing recomposition
     // These states persist across playback state changes to ensure continuous progress updates.
@@ -790,8 +791,8 @@ fun BottomSheetPlayer(
     // Position update - only for local playback
     // When casting, we use castPosition directly to avoid sync issues
     // Use isPlaying instead of playbackState to ensure continuous updates during playback
-    LaunchedEffect(isPlaying, isCasting, isVideoMode) {
-        if (!isCasting && isPlaying) {
+    LaunchedEffect(effectiveIsPlaying, isCasting, isVideoMode) {
+        if (!isCasting && effectiveIsPlaying) {
             while (isActive) {
                 delay(100) // Update more frequently for smoother progress bar
                 if (sliderPosition == null) { // Only update if user isn't dragging
@@ -1550,6 +1551,8 @@ fun BottomSheetPlayer(
                                     if (isCasting) {
                                         castHandler?.seekTo(it)
                                         lastManualSeekTime = System.currentTimeMillis()
+                                    } else if (isVideoMode) {
+                                        videoPlayerManager.seekTo(it)
                                     } else {
                                         playerConnection.player.seekTo(it)
                                     }
@@ -1577,6 +1580,8 @@ fun BottomSheetPlayer(
                                     if (isCasting) {
                                         castHandler?.seekTo(it)
                                         lastManualSeekTime = System.currentTimeMillis()
+                                    } else if (isVideoMode) {
+                                        videoPlayerManager.seekTo(it)
                                     } else {
                                         playerConnection.player.seekTo(it)
                                     }
@@ -1600,6 +1605,8 @@ fun BottomSheetPlayer(
                                     if (isCasting) {
                                         castHandler?.seekTo(it)
                                         lastManualSeekTime = System.currentTimeMillis()
+                                    } else if (isVideoMode) {
+                                        videoPlayerManager.seekTo(it)
                                     } else {
                                         playerConnection.player.seekTo(it)
                                     }
@@ -1629,6 +1636,8 @@ fun BottomSheetPlayer(
                                     if (isCasting) {
                                         castHandler?.seekTo(it)
                                         lastManualSeekTime = System.currentTimeMillis()
+                                    } else if (isVideoMode) {
+                                        videoPlayerManager.seekTo(it)
                                     } else {
                                         playerConnection.player.seekTo(it)
                                     }
@@ -1798,6 +1807,8 @@ fun BottomSheetPlayer(
                                     } else if (playbackState == STATE_ENDED) {
                                         playerConnection.player.seekTo(0, 0)
                                         playerConnection.player.playWhenReady = true
+                                    } else if (isVideoMode) {
+                                        videoPlayerManager.togglePlayPause()
                                     } else {
                                         playerConnection.togglePlayPause()
                                     }
@@ -2006,6 +2017,8 @@ fun BottomSheetPlayer(
                                             } else if (playbackState == STATE_ENDED) {
                                                 playerConnection.player.seekTo(0, 0)
                                                 playerConnection.player.playWhenReady = true
+                                            } else if (isVideoMode) {
+                                                videoPlayerManager.togglePlayPause()
                                             } else {
                                                 playerConnection.player.togglePlayPause()
                                             }
