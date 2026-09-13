@@ -131,4 +131,10 @@ class VideoPlayerManagerTest {
         manager.setVideoMode(false)
         assertFalse(manager.isVideoMode.value)
     }
+
+    @Test
+    fun `preloadMusicVideoId handles unknown track gracefully without throwing`() {
+        manager.preloadMusicVideoId("unknown_track_id_12345")
+        assertTrue(manager.isVideoAvailable.value)
+    }
 }

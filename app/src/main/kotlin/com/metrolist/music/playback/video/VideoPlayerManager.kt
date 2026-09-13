@@ -138,8 +138,8 @@ class VideoPlayerManager(
             val mainPos = mainPlayer.currentPosition
             val videoPos = video.currentPosition
             val drift = kotlin.math.abs(videoPos - mainPos)
-            // If drift is significant (> 1500ms), seek video; otherwise let it play smoothly to avoid re-buffering
-            if (drift > 1500L) {
+            // If drift is noticeable (> 250ms), seek video to match exact millisecond position
+            if (drift > 250L) {
                 video.seekTo(mainPos.coerceAtLeast(0L))
             }
             mainPlayer.volume = 0f
@@ -319,20 +319,28 @@ class VideoPlayerManager(
             val artistName = tagMeta?.artists?.firstOrNull()?.name
                 ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
                 ?: ""
+            val tagDuration = tagMeta?.duration
+            val playerDuration = playerProvider()?.duration?.takeIf { it > 0 }?.div(1000)?.toInt()
 
             preloadingMediaId = mediaId
             preloadJob?.cancel()
             preloadJob = scope.launch(Dispatchers.IO) {
                 try {
+                    val song = database.songEntity(mediaId)
+                    val songDuration = (if (tagDuration != null && tagDuration > 0) tagDuration else null)
+                        ?: (if (song != null && song.duration > 0) song.duration else null)
+                        ?: playerDuration
+
                     var targetVideoId = songToMusicVideoCache.get(mediaId)
                     if (targetVideoId == null && !isAlreadyVideo) {
-                        val resolved = resolveMusicVideoId(mediaId, songTitle, artistName)
+                        val resolved = resolveMusicVideoId(mediaId, songTitle, artistName, songDuration)
                         if (resolved != null) {
                             targetVideoId = resolved
                             songToMusicVideoCache.put(mediaId, resolved)
                             _isVideoAvailable.value = true
                         } else {
                             targetVideoId = mediaId
+                            songToMusicVideoCache.put(mediaId, mediaId)
                         }
                     } else if (targetVideoId == null) {
                         targetVideoId = mediaId
@@ -489,12 +497,17 @@ class VideoPlayerManager(
         }
     }
 
-    private suspend fun resolveMusicVideoId(mediaId: String, songTitle: String?, artistName: String?): String? {
+    private suspend fun resolveMusicVideoId(
+        mediaId: String,
+        songTitle: String?,
+        artistName: String?,
+        expectedDurationSeconds: Int? = null,
+    ): String? {
         val title = songTitle?.trim()?.takeIf { it.isNotBlank() } ?: return null
         val artist = artistName?.trim().orEmpty()
         val query = if (artist.isNotBlank()) "$title $artist" else title
 
-        Timber.tag(TAG).d("Resolving official music video for: '$query'")
+        Timber.tag(TAG).d("Resolving official music video for: '$query' (expectedDuration=${expectedDurationSeconds}s)")
         val searchResult = YouTube.search(query, YouTube.SearchFilter.FILTER_VIDEO).getOrNull() ?: return null
         val items = searchResult.items
         if (items.isEmpty()) return null
@@ -511,21 +524,44 @@ class VideoPlayerManager(
             val isCover = itemTitle.contains("cover", ignoreCase = true) || itemTitle.contains("karaoke", ignoreCase = true)
             if (isLyrics || isCover) continue
 
+            // Duration alignment verification:
+            // A music video with > 4s duration discrepancy has extended intros, skits, dialogues,
+            // or is an unaligned cut (e.g. Drake's God's Plan 357s vs 199s). Swapping to it causes
+            // severe lyric and audio desync. Reject it for seamless crossover!
+            val itemDuration = (item as? SongItem)?.duration
+            if (expectedDurationSeconds != null && expectedDurationSeconds > 0 && itemDuration != null && itemDuration > 0) {
+                val diff = kotlin.math.abs(itemDuration - expectedDurationSeconds)
+                if (diff > 4) {
+                    Timber.tag(TAG).d("Rejecting candidate [${item.title}] id=${item.id}: duration ${itemDuration}s differs by ${diff}s from song (${expectedDurationSeconds}s)")
+                    continue
+                }
+            }
+
             if (firstArtist.isNotBlank()) {
                 val matchesArtist = (item as? SongItem)?.artists?.any {
                     it.name.contains(firstArtist, ignoreCase = true)
                 } == true || itemTitle.contains(firstArtist, ignoreCase = true)
                 if (matchesArtist) {
-                    Timber.tag(TAG).i("Resolved music video [${item.title}] id=${item.id} for '$query'")
+                    Timber.tag(TAG).i("Resolved duration-aligned music video [${item.title}] id=${item.id} for '$query'")
                     return item.id
                 }
             }
         }
 
-        // Fallback to the first non-lyrics result, or first result
-        val fallback = items.firstOrNull { !it.title.contains("lyrics", ignoreCase = true) } ?: items.first()
-        Timber.tag(TAG).i("Fallback resolved music video [${fallback.title}] id=${fallback.id} for '$query'")
-        return fallback.id
+        // Only accept fallback if duration matches as well
+        for (fallback in items) {
+            if (fallback.title.contains("lyrics", ignoreCase = true)) continue
+            val itemDuration = (fallback as? SongItem)?.duration
+            if (expectedDurationSeconds != null && expectedDurationSeconds > 0 && itemDuration != null && itemDuration > 0) {
+                val diff = kotlin.math.abs(itemDuration - expectedDurationSeconds)
+                if (diff > 4) continue
+            }
+            Timber.tag(TAG).i("Fallback resolved duration-aligned music video [${fallback.title}] id=${fallback.id} for '$query'")
+            return fallback.id
+        }
+
+        Timber.tag(TAG).d("No duration-aligned music video found for '$query'; falling back to native mediaId stream for 100% lyric/audio sync")
+        return null
     }
 
     fun loadAndPlayVideo(mediaId: String) {
@@ -544,6 +580,8 @@ class VideoPlayerManager(
             val itemArtist = tagMeta?.artists?.firstOrNull()?.name
                 ?: (if (currentItem?.mediaId == mediaId) currentItem.mediaMetadata.artist?.toString() else null)
                 ?: ""
+            val tagDuration = tagMeta?.duration
+            val playerDuration = mainPlayer?.duration?.takeIf { it > 0 }?.div(1000)?.toInt()
 
             val cachedVideoId = songToMusicVideoCache.get(mediaId) ?: mediaId
             val cached = videoStreamCache[cachedVideoId] ?: videoStreamCache[mediaId]
@@ -578,6 +616,10 @@ class VideoPlayerManager(
                     }
 
                     val song = database.songEntity(mediaId)
+                    val songDuration = (if (tagDuration != null && tagDuration > 0) tagDuration else null)
+                        ?: (if (song != null && song.duration > 0) song.duration else null)
+                        ?: playerDuration
+
                     val audioQuality = audioQualityProvider()
                     val contentHints = ContentHints(
                         isExplicit = song?.explicit,
@@ -591,13 +633,15 @@ class VideoPlayerManager(
                             database.song(mediaId).firstOrNull()?.artists?.firstOrNull()?.name.orEmpty()
                         }
 
-                        val resolvedId = resolveMusicVideoId(mediaId, songTitle, artistName)
+                        val resolvedId = resolveMusicVideoId(mediaId, songTitle, artistName, songDuration)
                         if (resolvedId != null) {
                             targetVideoId = resolvedId
                             songToMusicVideoCache.put(mediaId, resolvedId)
-                            Timber.tag(TAG).i("Audio track $mediaId resolved to official music video $resolvedId")
+                            Timber.tag(TAG).i("Audio track $mediaId resolved to duration-aligned official music video $resolvedId")
                         } else {
                             targetVideoId = mediaId
+                            songToMusicVideoCache.put(mediaId, mediaId)
+                            Timber.tag(TAG).i("Audio track $mediaId using native mediaId stream for 100% lyric synchronization")
                         }
                     } else if (targetVideoId == null) {
                         targetVideoId = mediaId
