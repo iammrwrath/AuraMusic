@@ -192,5 +192,16 @@ jobs:
             gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file issue_comment.md || true
             gh issue edit "$ISSUE_NUMBER" --repo "$GH_REPO" --add-label "fixed" || true
           else
-            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file ai_solution_summary.md || true
+            cat << EOF > issue_comment.md
+          ### 🤖 AI Diagnostic Analysis Completed
+
+          The AI self-healing engine analyzed the provided flight recorder logs and codebase context.
+
+          > ℹ️ **Status**: Diagnostic summary logged below. An automated code patch was not generated for this report, so an automated release build was skipped. Developers will review this diagnostic report manually.
+
+          ---
+
+          EOF
+            cat ai_solution_summary.md >> issue_comment.md
+            gh issue comment "$ISSUE_NUMBER" --repo "$GH_REPO" --body-file issue_comment.md || true
           fi

@@ -3116,6 +3116,27 @@ class MusicService :
     private fun isRemotePlaybackError(error: PlaybackException): Boolean =
         error.errorCode == PlaybackException.ERROR_CODE_REMOTE_ERROR
 
+    /**
+     * Checks if the error is caused by premature stream termination, unexpected EOF,
+     * or corrupted media container/demuxer failures (such as MatroskaExtractor EOFException).
+     */
+    private fun isSourceEofOrCorruptionError(error: PlaybackException): Boolean {
+        var cause: Throwable? = error.cause
+        while (cause != null) {
+            if (cause is java.io.EOFException ||
+                cause is androidx.media3.common.ParserException ||
+                cause::class.simpleName?.contains("ParserException") == true ||
+                cause.message?.contains("advance beyond end of chunk", ignoreCase = true) == true ||
+                cause.message?.contains("Premature end", ignoreCase = true) == true ||
+                cause.message?.contains("End of stream", ignoreCase = true) == true
+            ) {
+                return true
+            }
+            cause = cause.cause
+        }
+        return false
+    }
+
     override fun onPlayerError(error: PlaybackException) {
         super.onPlayerError(error)
 
@@ -3170,6 +3191,12 @@ class MusicService :
             isFileNotFoundError(error) -> {
                 Timber.tag(TAG).d("Cache file missing (ENOENT) detected, refreshing stream")
                 handleFileNotFoundError(mediaId)
+                return
+            }
+
+            isSourceEofOrCorruptionError(error) -> {
+                Timber.tag(TAG).d("Source EOF / stream corruption detected, performing clean recovery")
+                handleSourceEofOrCorruptionError(mediaId, failedStreamClient)
                 return
             }
 
@@ -3380,6 +3407,64 @@ class MusicService :
                 player.prepare()
 
                 Timber.tag(TAG).d("Retrying playback for $mediaId after page reload error")
+            }
+    }
+
+    /**
+     * Handles unexpected stream EOF or corrupted container reads (e.g. MatroskaExtractor EOFException).
+     * Evicts cached chunk and stream URL, invalidates WEB_REMIX if applicable,
+     * and resumes from a clean sync position or skips if EOF was near the end of the song.
+     */
+    private fun handleSourceEofOrCorruptionError(
+        mediaId: String?,
+        failedStreamClient: String?,
+    ) {
+        if (mediaId == null) {
+            handleFinalFailure()
+            return
+        }
+
+        if (hasExceededRetryLimit(mediaId)) {
+            Timber.tag(TAG).w("Song $mediaId reached retry limit after EOF/corruption error")
+            markSongAsFailed(mediaId)
+            handleFinalFailure()
+            return
+        }
+
+        incrementRetryCount(mediaId)
+
+        // If EOF happened right near the end of the track, don't stall the user with retries; advance to next track
+        val duration = player.duration
+        val currentPosition = player.currentPosition
+        if (duration > 0 && currentPosition >= (duration - 3000L).coerceAtLeast(0L)) {
+            Timber.tag(TAG).i("EOF occurred near track end ($currentPosition / $duration ms), advancing to next track")
+            skipOnError()
+            return
+        }
+
+        songUrlCache.invalidate(mediaId)
+        if (failedStreamClient == "WEB_REMIX") {
+            InnerTubeXPlayer.markWebRemixFailed(mediaId)
+        }
+
+        retryJob?.cancel()
+        retryJob =
+            scope.launch {
+                performAggressiveCacheClear(mediaId)
+                delay(RETRY_DELAY_MS)
+
+                val currentIndex = player.currentMediaItemIndex
+                if (currentIndex == C.INDEX_UNSET) {
+                    handleFinalFailure()
+                    return@launch
+                }
+
+                // Rewind 1 second so demuxer begins on a clean sync frame / header boundary
+                val safeSeekPos = (currentPosition - 1000L).coerceAtLeast(0L)
+                player.seekTo(currentIndex, safeSeekPos)
+                player.prepare()
+                player.play()
+                Timber.tag(TAG).d("Retrying playback for $mediaId after EOF/corruption error from pos=$safeSeekPos ms")
             }
     }
 
