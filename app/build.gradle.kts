@@ -44,8 +44,8 @@ android {
         applicationId = applicationIdOverride ?: baseApplicationId
         minSdk = 26
         targetSdk = 36
-        versionCode = 171
-        versionName = "13.8.19"
+        versionCode = 172
+        versionName = "13.8.20"
         val baseVersionName = requireNotNull(versionName)
         buildConfigField("String", "BASE_VERSION_NAME", "\"$baseVersionName\"")
         buildCommit?.let { versionName = "$baseVersionName+$it" }
