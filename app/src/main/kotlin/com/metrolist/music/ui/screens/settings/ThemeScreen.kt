@@ -43,6 +43,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,6 +77,8 @@ import androidx.navigation.NavController
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import com.metrolist.music.R
+import com.metrolist.music.constants.AppFont
+import com.metrolist.music.constants.AppFontKey
 import com.metrolist.music.constants.DarkModeKey
 import com.metrolist.music.constants.DynamicThemeKey
 import com.metrolist.music.constants.NothingThemeKey
@@ -83,6 +87,7 @@ import com.metrolist.music.constants.PureBlackMiniPlayerKey
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.ui.theme.DefaultThemeColor
 import com.metrolist.music.ui.theme.MetrolistTheme
+import com.metrolist.music.ui.theme.geistFontFamily
 import com.metrolist.music.ui.theme.ndotFontFamily
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -161,6 +166,10 @@ fun ThemeScreen(
         }
     }
 
+    val (appFontName, onAppFontChangeRaw) = rememberPreference(AppFontKey, defaultValue = AppFont.SYSTEM.name)
+    val appFont = remember(appFontName) { AppFont.fromName(appFontName) }
+    val onAppFontChange: (AppFont) -> Unit = { onAppFontChangeRaw(it.name) }
+
     if (isLandscape) {
         LandscapeThemeLayout(
             innerPadding = PaddingValues(0.dp),
@@ -170,6 +179,8 @@ fun ThemeScreen(
             onPureBlackChange = onPureBlackChange,
             nothingTheme = nothingTheme,
             onNothingThemeChange = onNothingThemeChange,
+            appFont = appFont,
+            onAppFontChange = onAppFontChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = handleColorSelection
         )
@@ -182,6 +193,8 @@ fun ThemeScreen(
             onPureBlackChange = onPureBlackChange,
             nothingTheme = nothingTheme,
             onNothingThemeChange = onNothingThemeChange,
+            appFont = appFont,
+            onAppFontChange = onAppFontChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = handleColorSelection
         )
@@ -209,6 +222,8 @@ fun PortraitThemeLayout(
     onPureBlackChange: (Boolean) -> Unit,
     nothingTheme: Boolean = false,
     onNothingThemeChange: (Boolean) -> Unit = {},
+    appFont: AppFont = AppFont.SYSTEM,
+    onAppFontChange: (AppFont) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -242,6 +257,8 @@ fun PortraitThemeLayout(
             onPureBlackChange = onPureBlackChange,
             nothingTheme = nothingTheme,
             onNothingThemeChange = onNothingThemeChange,
+            appFont = appFont,
+            onAppFontChange = onAppFontChange,
             selectedThemeColor = selectedThemeColor,
             onSelectedThemeColorChange = onSelectedThemeColorChange
         )
@@ -259,6 +276,8 @@ fun LandscapeThemeLayout(
     onPureBlackChange: (Boolean) -> Unit,
     nothingTheme: Boolean = false,
     onNothingThemeChange: (Boolean) -> Unit = {},
+    appFont: AppFont = AppFont.SYSTEM,
+    onAppFontChange: (AppFont) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -303,6 +322,8 @@ fun LandscapeThemeLayout(
                 onPureBlackChange = onPureBlackChange,
                 nothingTheme = nothingTheme,
                 onNothingThemeChange = onNothingThemeChange,
+                appFont = appFont,
+                onAppFontChange = onAppFontChange,
                 selectedThemeColor = selectedThemeColor,
                 onSelectedThemeColorChange = onSelectedThemeColorChange
             )
@@ -320,6 +341,8 @@ fun ThemeControls(
     onPureBlackChange: (Boolean) -> Unit,
     nothingTheme: Boolean = false,
     onNothingThemeChange: (Boolean) -> Unit = {},
+    appFont: AppFont = AppFont.SYSTEM,
+    onAppFontChange: (AppFont) -> Unit = {},
     selectedThemeColor: Color,
     onSelectedThemeColorChange: (Color) -> Unit
 ) {
@@ -439,7 +462,7 @@ fun ThemeControls(
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "NDOT",
+                                    text = "NOTHING OS 5",
                                     fontFamily = ndotFontFamily,
                                     color = Color.White,
                                     style = MaterialTheme.typography.labelSmall
@@ -463,6 +486,57 @@ fun ThemeControls(
                             uncheckedTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
                         )
                     )
+                }
+            }
+
+            // App Font / Typography Section
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = stringResource(R.string.app_font_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = stringResource(R.string.app_font_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppFont.entries.forEach { fontOption ->
+                        val isSelected = appFont == fontOption
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onAppFontChange(fontOption) },
+                            label = {
+                                Text(
+                                    text = when (fontOption) {
+                                        AppFont.SYSTEM -> stringResource(R.string.font_system)
+                                        AppFont.GEIST -> "Geist Sans"
+                                        AppFont.NOTHING_HYBRID -> "OS 5 Hybrid"
+                                    },
+                                    fontFamily = when (fontOption) {
+                                        AppFont.SYSTEM -> null
+                                        AppFont.GEIST -> geistFontFamily
+                                        AppFont.NOTHING_HYBRID -> ndotFontFamily
+                                    },
+                                    style = MaterialTheme.typography.labelMedium
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            )
+                        )
+                    }
                 }
             }
 

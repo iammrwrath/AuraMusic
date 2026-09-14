@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.metrolist.music.R
 import com.metrolist.music.ui.screens.OptionStats
 import com.metrolist.music.ui.theme.LocalNothingTheme
+import com.metrolist.music.ui.theme.geistFontFamily
 import com.metrolist.music.ui.theme.ndotFontFamily
 
 @Composable
@@ -80,7 +81,7 @@ fun <E> ChipsRow(
         chips.forEach { (value, label) ->
             val selected = currentValue == value
             FilterChip(
-                label = { Text(label, fontFamily = if (isNothing) ndotFontFamily else null) },
+                label = { Text(label, fontFamily = if (isNothing) geistFontFamily else null) },
                 selected = selected,
                 colors = if (isNothing) {
                     FilterChipDefaults.filterChipColors(
@@ -150,7 +151,7 @@ fun <Int> ChoiceChipsRow(
                             OptionStats.YEARS -> stringResource(id = R.string.years)
                             OptionStats.CONTINUOUS -> stringResource(id = R.string.continuous)
                         },
-                        fontFamily = if (isNothing) ndotFontFamily else null,
+                        fontFamily = if (isNothing) geistFontFamily else null,
                     )
                 },
                 trailingIcon = {
@@ -184,7 +185,7 @@ fun <Int> ChoiceChipsRow(
                 ) {
                     options.forEach { option ->
                         DropdownMenuItem(
-                            text = { Text(text = option.second, fontFamily = if (isNothing) ndotFontFamily else null) },
+                            text = { Text(text = option.second, fontFamily = if (isNothing) geistFontFamily else null) },
                             onClick = {
                                 onSelectionChange(option.first)
                                 expandIconDegree -= 180
@@ -212,7 +213,7 @@ fun <Int> ChoiceChipsRow(
                     Spacer(Modifier.width(8.dp))
                     val selected = currentValue == value
                     FilterChip(
-                        label = { Text(label, fontFamily = if (isNothing) ndotFontFamily else null) },
+                        label = { Text(label, fontFamily = if (isNothing) geistFontFamily else null) },
                         selected = selected,
                         colors = if (isNothing) {
                             FilterChipDefaults.filterChipColors(

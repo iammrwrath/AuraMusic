@@ -27,11 +27,13 @@ import com.materialkolor.score.Score
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import com.metrolist.music.constants.AppFont
 
 val DefaultThemeColor = Color(0xFFED5564)
 val NothingThemeColor = Color(0xFFD71921)
 
 val LocalNothingTheme = staticCompositionLocalOf { false }
+val LocalAppFont = staticCompositionLocalOf { AppFont.SYSTEM }
 
 @Composable
 fun MetrolistTheme(
@@ -39,6 +41,7 @@ fun MetrolistTheme(
     pureBlack: Boolean = false,
     themeColor: Color = DefaultThemeColor,
     nothingTheme: Boolean = false,
+    appFont: AppFont = AppFont.SYSTEM,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
@@ -87,10 +90,20 @@ fun MetrolistTheme(
         }
     }
 
-    val typography = if (nothingTheme) NothingTypography else MaterialTheme.typography
+    val defaultTypography = MaterialTheme.typography
+    val typography = remember(nothingTheme, appFont, defaultTypography) {
+        when {
+            nothingTheme && appFont == AppFont.GEIST -> GeistTypography
+            nothingTheme -> NothingTypography
+            appFont == AppFont.GEIST -> GeistTypography
+            appFont == AppFont.NOTHING_HYBRID -> NothingTypography
+            else -> defaultTypography
+        }
+    }
 
     CompositionLocalProvider(
         LocalNothingTheme provides nothingTheme,
+        LocalAppFont provides appFont,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

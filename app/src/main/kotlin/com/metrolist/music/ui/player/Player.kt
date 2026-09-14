@@ -61,6 +61,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.metrolist.music.ui.theme.LocalNothingTheme
+import com.metrolist.music.ui.theme.geistMonoFontFamily
 import com.metrolist.music.ui.theme.ndotFontFamily
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -1677,7 +1678,7 @@ fun BottomSheetPlayer(
             ) {
                 Text(
                     text = makeTimeString(sliderPosition ?: effectivePosition),
-                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = ndotFontFamily) else MaterialTheme.typography.labelMedium,
+                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = geistMonoFontFamily) else MaterialTheme.typography.labelMedium,
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1685,7 +1686,7 @@ fun BottomSheetPlayer(
 
                 Text(
                     text = if (duration != C.TIME_UNSET) makeTimeString(duration) else "",
-                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = ndotFontFamily) else MaterialTheme.typography.labelMedium,
+                    style = if (isNothing) MaterialTheme.typography.labelMedium.copy(fontFamily = geistMonoFontFamily) else MaterialTheme.typography.labelMedium,
                     color = TextBackgroundColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

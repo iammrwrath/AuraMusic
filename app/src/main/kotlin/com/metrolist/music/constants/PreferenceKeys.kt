@@ -22,6 +22,18 @@ val PureBlackKey = booleanPreferencesKey("pureBlack")
 val PureBlackMiniPlayerKey = booleanPreferencesKey("pureBlackMiniPlayer")
 val NothingThemeKey = booleanPreferencesKey("nothingTheme")
 val NothingDotMatrixFontKey = booleanPreferencesKey("nothingDotMatrixFont")
+val AppFontKey = stringPreferencesKey("appFont")
+
+enum class AppFont(val labelRes: Int) {
+    SYSTEM(com.metrolist.music.R.string.font_system),
+    GEIST(com.metrolist.music.R.string.font_geist),
+    NOTHING_HYBRID(com.metrolist.music.R.string.font_nothing_hybrid);
+
+    companion object {
+        fun fromName(name: String?): AppFont = entries.find { it.name.equals(name, ignoreCase = true) } ?: SYSTEM
+    }
+}
+
 const val NothingRedColor = 0xFFD71921.toInt()
 val MiniPlayerBackgroundStyleKey = stringPreferencesKey("miniPlayerBackgroundStyle")
 

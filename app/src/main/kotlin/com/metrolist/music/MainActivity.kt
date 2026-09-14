@@ -161,6 +161,8 @@ import com.metrolist.music.constants.PreferredLyricsProvider
 import com.metrolist.music.constants.PreferredLyricsProviderKey
 import com.metrolist.music.constants.PureBlackKey
 import com.metrolist.music.constants.NothingThemeKey
+import com.metrolist.music.constants.AppFont
+import com.metrolist.music.constants.AppFontKey
 import com.metrolist.music.constants.SYSTEM_DEFAULT
 import com.metrolist.music.constants.SelectedThemeColorKey
 import com.metrolist.music.constants.SimpMusicMigrationDoneKey
@@ -622,6 +624,8 @@ class MainActivity : FragmentActivity() {
         val userDensityScale by rememberPreference(DensityScaleKey, defaultValue = 1f)
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val nothingTheme by rememberPreference(NothingThemeKey, defaultValue = false)
+        val appFontName by rememberPreference(AppFontKey, defaultValue = AppFont.SYSTEM.name)
+        val appFont = remember(appFontName) { AppFont.fromName(appFontName) }
         val pureBlack =
             remember(pureBlackEnabled, useDarkTheme, nothingTheme) {
                 nothingTheme || (pureBlackEnabled && useDarkTheme)
@@ -695,6 +699,7 @@ class MainActivity : FragmentActivity() {
             pureBlack = pureBlack,
             themeColor = themeColor,
             nothingTheme = nothingTheme,
+            appFont = appFont,
         ) {
             val currentDensity = LocalDensity.current
             val windowInfo = LocalWindowInfo.current

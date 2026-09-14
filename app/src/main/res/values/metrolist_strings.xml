@@ -733,8 +733,13 @@
     <string name="palette_grey">Grey</string>
     <string name="palette_blue_grey">Blue Grey</string>
     <string name="palette_nothing_red">Nothing Red</string>
-    <string name="nothing_theme_title">Nothing OS (Dot Matrix)</string>
-    <string name="nothing_theme_desc">Minimalist Nothing Phone style with authentic NDot matrix typography, pure black OLED background, and Nothing Red accents.</string>
+    <string name="nothing_theme_title">Nothing OS 5 (Geist &amp; NDot)</string>
+    <string name="nothing_theme_desc">Minimalist Nothing Phone style with official Nothing OS 5 Geist typography, signature NDot matrix display headings, pure black OLED background, and Nothing Red accents.</string>
+    <string name="app_font_title">App Font</string>
+    <string name="app_font_desc">Choose the typeface used across the app</string>
+    <string name="font_system">System Default</string>
+    <string name="font_geist">Geist (Nothing OS 5)</string>
+    <string name="font_nothing_hybrid">Nothing OS 5 (NDot + Geist)</string>
     <string name="import_m3u_playlist">Import M3U / M3U8 Playlist</string>
     <string name="import_m3u_playlist_desc">Scan and import local playlist files from device storage</string>
     <string name="m3u_importing">Importing playlist…</string>
