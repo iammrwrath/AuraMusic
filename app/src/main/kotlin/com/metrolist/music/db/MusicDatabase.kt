@@ -255,7 +255,7 @@ private fun applyPragmaSettings(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_song_totalPlayTime ON song (totalPlayTime)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_playlist_song_map_playlistId ON playlist_song_map (playlistId)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_playlist_song_map_songId ON playlist_song_map (songId)")
-        db.execSQL("CREATE INDEX IF NOT EXISTS idx_format_songId ON format (songId)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_format_id ON format (id)")
     } catch (e: Exception) {
         Timber.tag("MusicDatabase").e(e, "Failed to set PRAGMA settings")
     }
