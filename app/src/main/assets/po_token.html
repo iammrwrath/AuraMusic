@@ -204,9 +204,9 @@
         throw new Error('ODM:Invalid - result is not Uint8Array, got: ' + Object.prototype.toString.call(result));
       }
 
-      // Validate token size (expected 110-128 bytes per BgUtils documentation)
-      if (result.length < 100 || result.length > 140) {
-        console.warn('[obtainPoToken] Token size ' + result.length + ' bytes may be outside expected range (110-128)');
+      // Validate token size: modern PO tokens range from basic minters (~50-140 bytes) to streaming tokens with visitor data (~500-800+ bytes)
+      if (result.length < 32 || result.length > 2048) {
+        console.warn('[obtainPoToken] Token size ' + result.length + ' bytes may be outside expected range (32-2048)');
       }
 
       return result;

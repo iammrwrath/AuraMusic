@@ -4231,11 +4231,20 @@ class MusicService :
         }
     }
 
-    private fun saveQueueToDisk() {
+    private var lastQueueSaveTime = 0L
+
+    private fun saveQueueToDisk(force: Boolean = false) {
         if (player.mediaItemCount == 0) {
             Timber.tag(TAG).d("Skipping queue save - no media items")
             return
         }
+
+        val now = System.currentTimeMillis()
+        if (!force && now - lastQueueSaveTime < 500L) {
+            Timber.tag(TAG).d("Skipping queue save - debounced (<500ms)")
+            return
+        }
+        lastQueueSaveTime = now
 
         try {
             val persistQueue =
@@ -4422,7 +4431,7 @@ class MusicService :
         audioManager.unregisterAudioDeviceCallback(audioDeviceCallback)
         castConnectionHandler?.release()
         if (dataStore.get(PersistentQueueKey, true)) {
-            saveQueueToDisk()
+            saveQueueToDisk(force = true)
         }
         screenOffHandler.removeCallbacks(screenOffTimeout)
         screenOffHandler.removeCallbacks(pauseTimeout)

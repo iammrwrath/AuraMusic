@@ -238,19 +238,24 @@ A user reported the following bug / diagnostic report from their mobile device:
 {code_context_str}
 
 Please perform the following:
-1. Explain the root cause of the bug based on the logs, stack trace, and code.
-2. Provide a Git unified diff patch (using standard `diff --git a/... b/...` format) to fix the issue.
-   Make sure the diff paths match the exact repo path (e.g., `a/app/src/main/...` and `b/app/src/main/...`).
-   Ensure the code is robust, handles null safety, edge cases, and compiles cleanly in Kotlin 2.x / Android.
-   CRITICAL REQUIREMENT: You MUST include the unified diff code block inside ```diff ... ```. Do not only describe the changes.
+1. Determine whether the diagnostic report and logs contain an actual error, crash, or bug.
+   If the report shows normal/healthy operation with no crashes or errors, state clearly in ## DIAGNOSIS that the logs indicate healthy operation without bugs, and output:
+   ## PATCH
+   None
+2. If an actual bug or crash IS present:
+   - Explain the root cause based on the logs, stack traces, and code.
+   - Provide a Git unified diff patch (using standard `diff --git a/... b/...` format) to fix the issue.
+   - Make sure the diff paths match the exact repo path (e.g., `a/app/src/main/...` and `b/app/src/main/...`).
+   - Match exact existing lines from the provided source code context. Do not invent non-existent code.
+   - Ensure the code is robust, handles null safety, edge cases, and compiles cleanly in Kotlin 2.x / Android.
 
 Format your response strictly as follows:
 ## DIAGNOSIS
-<Explanation of the bug and fix>
+<Explanation of the bug or confirmation of healthy operation>
 
 ## PATCH
 ```diff
-<Git unified diff here>
+<Git unified diff here, or None if healthy>
 ```
 """
 
@@ -274,8 +279,15 @@ Format your response strictly as follows:
 
     patch_content = extract_patch(response_text)
 
-    # Multi-turn repair: if no diff block returned, ask Gemini explicitly for the patch
-    if not patch_content:
+    has_error_in_issue = any(
+        err in full_issue_text for err in ["Exception", "FATAL", "Crash", "crash", "E/AuraMusic", "E/AndroidRuntime", "Error", "error:"]
+    )
+    is_healthy_diagnosis = any(
+        phrase in diagnosis.lower() for phrase in ["no error", "operating normally", "healthy", "no bug", "no crash", "normal operation"]
+    )
+
+    # Multi-turn repair: only if an actual error was reported and diagnosis did not declare healthy
+    if not patch_content and has_error_in_issue and not is_healthy_diagnosis:
         print("[!] No ```diff block found in first response. Querying Gemini for patch correction...")
         repair_prompt = f"""You previously analyzed this issue and provided the following diagnosis:
 
