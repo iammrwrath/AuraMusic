@@ -5,49 +5,57 @@ import com.metrolist.innertube.pages.LibraryPage
 import com.metrolist.innertube.pages.PlaylistPage
 import java.security.MessageDigest
 
+private const val MAX_PAGINATION_REQUESTS = 500
+
 @JvmName("completedLibrary")
-suspend fun Result<PlaylistPage>.completed(): Result<PlaylistPage> = runCatching {
+suspend fun Result<PlaylistPage>.completed(maxRequests: Int = MAX_PAGINATION_REQUESTS): Result<PlaylistPage> = runCatching {
     val page = getOrThrow()
     val songs = page.songs.toMutableList()
     var continuation = page.songsContinuation
     val seenContinuations = mutableSetOf<String>()
     var requestCount = 0
 
-    while (continuation != null) {
-        check(requestCount++ < 50) { "Playlist pagination exceeded 50 requests" }
-        check(seenContinuations.add(continuation)) { "Playlist pagination repeated a continuation" }
+    while (continuation != null && requestCount < maxRequests) {
+        if (!seenContinuations.add(continuation)) {
+            // Guard against cyclic continuations gracefully without crashing
+            break
+        }
+        requestCount++
 
-        val continuationPage = YouTube.playlistContinuation(continuation).getOrThrow()
+        val continuationPage = YouTube.playlistContinuation(continuation).getOrNull() ?: break
         songs += continuationPage.songs
         continuation = continuationPage.continuation
     }
     PlaylistPage(
         playlist = page.playlist,
         songs = songs,
-        songsContinuation = null,
+        songsContinuation = continuation,
         continuation = page.continuation
     )
 }
 
 @JvmName("completedPlaylist")
-suspend fun Result<LibraryPage>.completed(): Result<LibraryPage> = runCatching {
+suspend fun Result<LibraryPage>.completed(maxRequests: Int = MAX_PAGINATION_REQUESTS): Result<LibraryPage> = runCatching {
     val page = getOrThrow()
     val items = page.items.toMutableList()
     var continuation = page.continuation
     val seenContinuations = mutableSetOf<String>()
     var requestCount = 0
 
-    while (continuation != null) {
-        check(requestCount++ < 50) { "Library pagination exceeded 50 requests" }
-        check(seenContinuations.add(continuation)) { "Library pagination repeated a continuation" }
+    while (continuation != null && requestCount < maxRequests) {
+        if (!seenContinuations.add(continuation)) {
+            // Guard against cyclic continuations gracefully without crashing
+            break
+        }
+        requestCount++
 
-        val continuationPage = YouTube.libraryContinuation(continuation).getOrThrow()
+        val continuationPage = YouTube.libraryContinuation(continuation).getOrNull() ?: break
         items += continuationPage.items
         continuation = continuationPage.continuation
     }
     LibraryPage(
         items = items,
-        continuation = null
+        continuation = continuation
     )
 }
 

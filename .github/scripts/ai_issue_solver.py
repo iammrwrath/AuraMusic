@@ -40,6 +40,13 @@ def search_candidate_files(issue_text: str):
             if f.endswith("/" + fn):
                 scores[f] += 10000
 
+    # 1b. Kotlin top-level synthetic class matches (e.g. UtilsKt, SyncUtilsKt, ExtensionsKt)
+    kt_matches = re.findall(r'([A-Za-z0-9_]+)Kt\b', issue_text)
+    for stem in set(kt_matches):
+        for f in all_files:
+            if Path(f).stem == stem:
+                scores[f] += 10000
+
     # 2. Log tag matches (e.g., [20:40:28.344] W/MusicService :)
     tag_matches = re.findall(r'\[\d{2}:\d{2}:\d{2}\.\d{3}\]\s+([EWDIV])\/([A-Za-z0-9_]+)', issue_text)
     for level, tag in tag_matches:
