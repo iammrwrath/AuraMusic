@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/icon.png" alt="AuraMusic app icon" width="160" />
+<img src="assets/logo.png" alt="AuraMusic app icon" width="160" />
 
 # AuraMusic
 
-### The next-generation, cross-platform YouTube Music streaming client featuring studio-grade Automix DJ transitions, Nothing OS Dot Matrix theme, Android Auto synchronized live lyrics, M3U playlist import, and dedicated Desktop apps.
+### The next-generation, cross-platform YouTube Music streaming client featuring studio-grade Automix DJ transitions, Nothing OS 5 Dot Matrix & Geist typography, Android Auto synchronized live lyrics, M3U playlist import, and dedicated Desktop apps.
 
 <br/>
 
@@ -22,8 +22,8 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.8 Released!
-> AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS Dot Matrix** mode with authentic hardware button styling, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
+> ### 🚀 Version 13.8.29 Released!
+> AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS 5 Dot Matrix & Geist Typography** mode, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---
 
