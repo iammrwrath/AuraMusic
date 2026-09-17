@@ -743,15 +743,17 @@ class SyncUtils @Inject constructor(
                     val remoteIds = remoteSongs.map { it.id }.toSet()
                     val localSongs = database.likedSongEntitiesByNameAsc()
                     val advertisedCount = page.playlist.songCountText?.filter { it.isDigit() }?.toIntOrNull()
-                    check(advertisedCount == null || remoteSongs.size >= advertisedCount) {
-                        "Liked-song response was incomplete (${remoteSongs.size}/$advertisedCount)"
+                    if (advertisedCount != null && remoteSongs.size < advertisedCount) {
+                        Timber.d("Liked songs: received ${remoteSongs.size} of $advertisedCount advertised songs (difference typically represents unplayable/deleted tracks on YouTube)")
                     }
                     val songIdsWithoutArtists = findSongIdsWithoutArtists(remoteIds)
                     val now = LocalDateTime.now()
 
                     database.withTransaction {
-                        localSongs.filterNot { it.id in remoteIds }.forEach { song ->
-                            update(song.localToggleLike())
+                        if (page.songsContinuation == null) {
+                            localSongs.filterNot { it.id in remoteIds }.forEach { song ->
+                                update(song.localToggleLike())
+                            }
                         }
 
                         remoteSongs.forEachIndexed { index, song ->
