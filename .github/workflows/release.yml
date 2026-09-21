@@ -313,13 +313,13 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists. Updating assets..."
             gh release edit "$TAG" --title "${{ needs.check-version.outputs.new_version }}" --notes-file attributed_release_notes.md --latest
-            gh release upload "$TAG" release_files/*.apk --clobber
+            gh release upload "$TAG" release_files/* --clobber
           else
             gh release create "$TAG" \
               --title "${{ needs.check-version.outputs.new_version }}" \
               --notes-file attributed_release_notes.md \
               --latest \
-              release_files/*.apk
+              release_files/*
           fi
 
           echo "Release created successfully!"
@@ -330,5 +330,5 @@ jobs:
           echo "- **Version**: v${{ needs.check-version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version Code**: ${{ needs.check-version.outputs.version_code }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Released by**: @${{ github.triggering_actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **APKs Built**: $(ls release_files/*.apk | wc -l)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release assets**: $(find release_files -maxdepth 1 -type f | wc -l)" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.check-version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
