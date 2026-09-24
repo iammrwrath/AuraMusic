@@ -22,7 +22,7 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.33 Released!
+> ### 🚀 Version 13.8.35 Released!
 > AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS 5 Dot Matrix & Geist Typography** mode, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---
@@ -92,14 +92,14 @@
 | Package | Format | Compatibility | Download |
 | :--- | :--- | :--- | :--- |
 | **AuraMusic Universal** | `.apk` | Android 8.0+ (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [⬇️ Download AuraMusic.apk](https://github.com/iammrwrath/AuraMusic/releases/latest/download/AuraMusic.apk) |
-| **AuraMusic v13.8.33** | `.apk` | Specific Release Version | [⬇️ Download v13.8.33](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.33/AuraMusic-v13.8.33.apk) |
+| **AuraMusic v13.8.35** | `.apk` | Specific Release Version | [⬇️ Download v13.8.35](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.35/AuraMusic-v13.8.35.apk) |
 
 <br/>
 
 ### Desktop (Windows / macOS / Linux)
 | Platform | Package | Description | Download |
 | :--- | :--- | :--- | :--- |
-| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.33/AuraMusic-Desktop.jar) |
+| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.35/AuraMusic-Desktop.jar) |
 
 </div>
 
