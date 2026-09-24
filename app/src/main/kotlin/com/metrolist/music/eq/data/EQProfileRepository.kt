@@ -60,6 +60,52 @@ class EQProfileRepository @Inject constructor(
         private const val TAG = "EQProfileRepository"
         private const val KEY_PROFILES = "eq_profiles"
         private const val KEY_ACTIVE_PROFILE_ID = "active_profile_id"
+
+        val BUILTIN_VINYL_PROFILE = SavedEQProfile(
+            id = "builtin_vinyl_warmth_air",
+            name = "Vinyl Warmth & Air",
+            deviceModel = "Vinyl Warmth & Air (Audiophile)",
+            bands = listOf(
+                ParametricEQBand(frequency = 32.0, gain = 1.0, q = 0.7, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 64.0, gain = 2.0, q = 1.0, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 125.0, gain = 1.5, q = 1.2, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 250.0, gain = 0.8, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 500.0, gain = 0.0, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 1000.0, gain = 0.5, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 2000.0, gain = 1.0, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 4000.0, gain = 1.5, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 8000.0, gain = 2.0, q = 1.2, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 16000.0, gain = 2.8, q = 0.8, filterType = FilterType.HSC)
+            ),
+            preamp = -1.5,
+            source = "audiophile_mastering",
+            rig = "reference",
+            isCustom = true,
+            addedTimestamp = 1L
+        )
+
+        val BUILTIN_FLAC_CRISP_PROFILE = SavedEQProfile(
+            id = "builtin_flac_crisp_clarity",
+            name = "Crisp Studio / FLAC Clarity",
+            deviceModel = "Crisp Studio / FLAC Clarity (Audiophile)",
+            bands = listOf(
+                ParametricEQBand(frequency = 32.0, gain = 0.5, q = 1.0, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 64.0, gain = 1.2, q = 1.2, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 125.0, gain = 0.5, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 250.0, gain = -0.5, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 500.0, gain = 0.0, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 1000.0, gain = 0.8, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 2000.0, gain = 1.5, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 4000.0, gain = 2.2, q = 1.4, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 8000.0, gain = 3.0, q = 1.2, filterType = FilterType.PK),
+                ParametricEQBand(frequency = 16000.0, gain = 3.5, q = 0.8, filterType = FilterType.HSC)
+            ),
+            preamp = -2.0,
+            source = "audiophile_mastering",
+            rig = "reference",
+            isCustom = true,
+            addedTimestamp = 2L
+        )
     }
 
     init {
@@ -72,17 +118,37 @@ class EQProfileRepository @Inject constructor(
     private fun loadProfiles() {
         try {
             val profilesJson = prefs.getString(KEY_PROFILES, null)
-            if (profilesJson != null) {
-                val loadedProfiles = json.decodeFromString<List<SavedEQProfile>>(profilesJson)
-                _profiles.value = loadedProfiles
-
-                // Load active profile
-                val activeId = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
-                _activeProfile.value = loadedProfiles.find { it.id == activeId }
+            val loadedProfiles = if (profilesJson != null) {
+                json.decodeFromString<List<SavedEQProfile>>(profilesJson).toMutableList()
+            } else {
+                mutableListOf()
             }
+
+            // Ensure built-in audiophile presets are always present
+            var modified = false
+            if (loadedProfiles.none { it.id == BUILTIN_VINYL_PROFILE.id }) {
+                loadedProfiles.add(BUILTIN_VINYL_PROFILE)
+                modified = true
+            }
+            if (loadedProfiles.none { it.id == BUILTIN_FLAC_CRISP_PROFILE.id }) {
+                loadedProfiles.add(BUILTIN_FLAC_CRISP_PROFILE)
+                modified = true
+            }
+
+            if (modified) {
+                val updatedJson = json.encodeToString<List<SavedEQProfile>>(loadedProfiles)
+                prefs.edit { putString(KEY_PROFILES, updatedJson) }
+            }
+
+            _profiles.value = loadedProfiles
+
+            // Load active profile
+            val activeId = prefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+            _activeProfile.value = loadedProfiles.find { it.id == activeId }
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "Error loading EQ profiles")
-            _profiles.value = emptyList()
+            val defaultList = listOf(BUILTIN_VINYL_PROFILE, BUILTIN_FLAC_CRISP_PROFILE)
+            _profiles.value = defaultList
             _activeProfile.value = null
         }
     }

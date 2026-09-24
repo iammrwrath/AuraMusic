@@ -746,13 +746,25 @@ constructor(
         searchResults.addAll(allLocalSongs)
 
         try {
-            val onlineResults = YouTube.search(trimmed, YouTube.SearchFilter.FILTER_SONG)
+            var rawItems = YouTube.search(trimmed, YouTube.SearchFilter.FILTER_SONG)
                 .getOrNull()
                 ?.items
                 ?.filterIsInstance<SongItem>()
-                ?.filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                ?.filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
-                ?.filter { onlineSong ->
+                .orEmpty()
+
+            // Fallback: If strict song filter returned nothing (e.g. artist voice search or unclassified release), try video/general filter
+            if (rawItems.isEmpty()) {
+                rawItems = YouTube.search(trimmed, YouTube.SearchFilter.FILTER_VIDEO)
+                    .getOrNull()
+                    ?.items
+                    ?.filterIsInstance<SongItem>()
+                    .orEmpty()
+            }
+
+            val onlineResults = rawItems
+                .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+                .filter { onlineSong ->
                     !allLocalSongs.any { localSong ->
                         localSong.id == onlineSong.id ||
                         (localSong.song.title.equals(onlineSong.title, ignoreCase = true) &&
@@ -762,7 +774,7 @@ constructor(
                              }
                          })
                     }
-                } ?: emptyList()
+                }
 
             database.transaction {
                 onlineResults.forEach { songItem ->
@@ -850,14 +862,26 @@ constructor(
             val extras = requestMetadata?.extras
             val mediaUri = requestMetadata?.mediaUri
 
-            // Extract voice query from various intent extras used by Gemini & Google Assistant
-            val voiceQuery = requestMetadata?.searchQuery?.takeIf { it.isNotBlank() }
-                ?: extras?.getString("android.intent.extra.title")?.takeIf { it.isNotBlank() }
-                ?: extras?.getString("android.intent.extra.artist")?.takeIf { it.isNotBlank() }
-                ?: extras?.getString("android.intent.extra.album")?.takeIf { it.isNotBlank() }
+            // Extract and synthesize voice query from various intent extras used by Gemini & Google Assistant
+            val rawTitle = extras?.getString("android.intent.extra.title")?.takeIf { it.isNotBlank() }
+            val rawArtist = extras?.getString("android.intent.extra.artist")?.takeIf { it.isNotBlank() }
+            val rawAlbum = extras?.getString("android.intent.extra.album")?.takeIf { it.isNotBlank() }
+
+            val synthesizedFromExtras = when {
+                !rawTitle.isNullOrBlank() && !rawArtist.isNullOrBlank() -> "$rawTitle $rawArtist"
+                !rawTitle.isNullOrBlank() -> rawTitle
+                !rawArtist.isNullOrBlank() -> rawArtist
+                !rawAlbum.isNullOrBlank() -> rawAlbum
+                else -> null
+            }
+
+            val extractedQuery = requestMetadata?.searchQuery?.takeIf { it.isNotBlank() }
+                ?: synthesizedFromExtras
                 ?: extras?.getString("query")?.takeIf { it.isNotBlank() }
                 ?: mediaUri?.getQueryParameter("query")?.takeIf { it.isNotBlank() }
                 ?: mediaUri?.getQueryParameter("q")?.takeIf { it.isNotBlank() }
+
+            val voiceQuery = extractedQuery?.let { VoiceSearchMatcher.cleanVoiceQuery(it) }?.takeIf { it.isNotBlank() }
 
             val rawMediaId = firstItem?.mediaId
             val path: List<String>? = if (!voiceQuery.isNullOrBlank()) {
@@ -1035,7 +1059,54 @@ constructor(
                             searchResults.firstOrNull { it.id == songId } ?: searchResults.firstOrNull()
                         }
 
-                    if(context.dataStore.get(AutoRadioQueueKey, true)) {
+                    val items = listOf(selectedSong?.toMediaItem() ?: return@future defaultResult)
+                    val autoRadioEnabled = context.dataStore.get(AutoRadioQueueKey, true)
+
+                    if (isVoiceSearch && autoRadioEnabled) {
+                        // For Android Auto voice queries: return playback immediately to prevent head unit 3-second watchdog timeouts,
+                        // and expand the radio queue asynchronously in the background.
+                        val songMetadata = selectedSong.toMediaMetadata()
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                val radioQueue = YouTubeQueue.radio(songMetadata)
+                                val radioStatus = radioQueue
+                                    .getInitialStatus()
+                                    .filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                    .filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+
+                                if (radioStatus.items.isNotEmpty()) {
+                                    val radioItemsWithoutCurrent = radioStatus.items.filter { it.mediaId != selectedSong.id }
+                                    withContext(Dispatchers.Main) {
+                                        service.adoptQueue(radioQueue, radioStatus.title, radioStatus.items.size)
+                                        if (service.player.currentMediaItem?.mediaId == selectedSong.id && radioItemsWithoutCurrent.isNotEmpty()) {
+                                            val currentIndex = service.player.currentMediaItemIndex
+                                            service.player.addMediaItems(currentIndex + 1, radioItemsWithoutCurrent)
+                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                reportException(e)
+                            }
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            service.adoptQueue(
+                                ListQueue(
+                                    title = selectedSong.song.title,
+                                    items = items,
+                                ),
+                                title = selectedSong.song.title,
+                            )
+                        }
+
+                        return@future MediaItemsWithStartPosition(
+                            items,
+                            0,
+                            C.TIME_UNSET,
+                        )
+                    }
+
+                    if (autoRadioEnabled) {
                         val radioQueue = YouTubeQueue.radio(selectedSong?.toMediaMetadata() ?: return@future defaultResult)
                         val radioStatus = runCatching {
                             withContext(Dispatchers.IO) {
@@ -1058,7 +1129,6 @@ constructor(
                         }
                     }
 
-                    val items = listOf(selectedSong?.toMediaItem() ?: return@future defaultResult)
                     withContext(Dispatchers.Main) {
                         service.adoptQueue(
                             ListQueue(

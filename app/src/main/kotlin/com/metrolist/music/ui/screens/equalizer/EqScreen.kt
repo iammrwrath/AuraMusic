@@ -366,12 +366,14 @@ private fun EQProfileItem(
             )
         },
         trailingContent = {
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.delete),
-                    contentDescription = stringResource(R.string.delete_profile_desc),
-                    tint = MaterialTheme.colorScheme.error
-                )
+            if (!profile.id.startsWith("builtin_")) {
+                IconButton(onClick = { showDeleteDialog = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.delete),
+                        contentDescription = stringResource(R.string.delete_profile_desc),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         modifier = Modifier

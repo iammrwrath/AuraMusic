@@ -7,13 +7,40 @@ object VoiceSearchMatcher {
     private val PUNCTUATION_REGEX = Regex("[^\\p{L}\\p{N}\\s]")
     const val FUZZY_THRESHOLD = 0.85
 
+    private val VOICE_PREFIX_REGEX = Regex(
+        "^\\s*(?:(?:can\\s+you\\s+|could\\s+you\\s+|please\\s+)?(?:play|listen\\s+to|stream|put\\s+on|queue|start)(?:\\s+(?:the\\s+)?(?:song|track|music|artist|album|playlist))?|(?:song|track)\\s+)",
+        RegexOption.IGNORE_CASE
+    )
+
+    private val VOICE_APP_SUFFIX_REGEX = Regex(
+        "\\s+(?:on|in|using|with|via)\\s+(?:auramusic|aura\\s*music|metrolist|metro\\s*list|youtube\\s*music|yt\\s*music|music|the\\s+car|car)\\s*$",
+        RegexOption.IGNORE_CASE
+    )
+
+    fun cleanVoiceQuery(raw: String): String {
+        var cleaned = raw.trim()
+        if (cleaned.isBlank()) return ""
+
+        // Strip trailing app name attribution ("... on AuraMusic", "... on MetroList")
+        cleaned = VOICE_APP_SUFFIX_REGEX.replace(cleaned, "").trim()
+
+        // Strip conversational command preamble ("Play the song ...", "Please put on ...")
+        cleaned = VOICE_PREFIX_REGEX.replace(cleaned, "").trim()
+
+        // Strip any residual punctuation at boundary
+        cleaned = cleaned.trim(',', '.', '!', '?', '"', '\'')
+
+        return if (cleaned.isNotBlank()) cleaned else raw.trim()
+    }
+
     data class ScoredSong(
         val song: Song,
         val score: Double
     )
 
     fun rankAll(query: String, candidates: List<Song>): List<ScoredSong> {
-        val queryLower = query.lowercase().trim()
+        val cleaned = cleanVoiceQuery(query)
+        val queryLower = (if (cleaned.isNotBlank()) cleaned else query).lowercase().trim()
         val queryTokens = tokenize(queryLower)
         if (queryTokens.isEmpty()) return emptyList()
 

@@ -228,6 +228,22 @@ fun SettingsScreen(
                 )
                 add(
                     Material3SettingsItem(
+                        icon = painterResource(R.drawable.github),
+                        title = { Text(stringResource(R.string.report_issue_ai)) },
+                        description = { Text(stringResource(R.string.report_issue_ai_desc)) },
+                        onClick = {
+                            val report = com.metrolist.music.utils.FlightRecorder.buildDiagnosticReport(context)
+                            val url = com.metrolist.music.utils.FlightRecorder.getGitHubIssueUrl(
+                                title = "[Bug] Diagnostic Report (${android.os.Build.MODEL})",
+                                body = report,
+                                labels = listOf("ai-fix", "bug")
+                            )
+                            uriHandler.openUri(url)
+                        }
+                    )
+                )
+                add(
+                    Material3SettingsItem(
                         icon = painterResource(R.drawable.info),
                         title = { Text(stringResource(R.string.about)) },
                         description = { Text(stringResource(R.string.settings_desc_about)) },

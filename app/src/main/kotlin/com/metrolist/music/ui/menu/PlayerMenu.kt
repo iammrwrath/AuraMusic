@@ -64,6 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +117,7 @@ fun PlayerMenu(
     mediaMetadata ?: return
     val navController = LocalNavController.current
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val database = LocalDatabase.current
     val playerConnection = LocalPlayerConnection.current ?: return
     val playerVolume = playerConnection.service.playerVolume.collectAsStateWithLifecycle()
@@ -736,6 +738,30 @@ fun PlayerMenu(
                                     onClick = {
                                         if (!varispeedMode) showPitchTempoDialog = true
                                         else showSpeedDialog = true
+                                    },
+                                ),
+                            )
+                            add(
+                                Material3MenuItemData(
+                                    title = { Text(text = stringResource(R.string.report_issue_ai)) },
+                                    description = { Text(text = stringResource(R.string.report_issue_ai_desc)) },
+                                    icon = {
+                                        Icon(
+                                            painter = painterResource(R.drawable.github),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(24.dp),
+                                        )
+                                    },
+                                    onClick = {
+                                        val report = com.metrolist.music.utils.FlightRecorder.buildDiagnosticReport(context)
+                                        val trackInfo = "${mediaMetadata.title} - ${mediaMetadata.artists.joinToString { it.name }}"
+                                        val url = com.metrolist.music.utils.FlightRecorder.getGitHubIssueUrl(
+                                            title = "[Playback Issue] $trackInfo (${android.os.Build.MODEL})",
+                                            body = report,
+                                            labels = listOf("ai-fix", "bug")
+                                        )
+                                        uriHandler.openUri(url)
+                                        onDismiss()
                                     },
                                 ),
                             )

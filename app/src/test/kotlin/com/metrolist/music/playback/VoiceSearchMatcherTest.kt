@@ -47,6 +47,17 @@ class VoiceSearchMatcherTest {
         )
     }
 
+    @Test
+    fun `cleanVoiceQuery strips conversational preambles and app suffixes`() {
+        assertEquals("Blinding Lights", VoiceSearchMatcher.cleanVoiceQuery("Play Blinding Lights"))
+        assertEquals("Espresso", VoiceSearchMatcher.cleanVoiceQuery("Play the song Espresso"))
+        assertEquals("Starboy", VoiceSearchMatcher.cleanVoiceQuery("Play the track Starboy on AuraMusic"))
+        assertEquals("Stay", VoiceSearchMatcher.cleanVoiceQuery("listen to Stay on MetroList"))
+        assertEquals("Anti-Hero", VoiceSearchMatcher.cleanVoiceQuery("put on Anti-Hero in the car"))
+        assertEquals("Drake", VoiceSearchMatcher.cleanVoiceQuery("queue Drake on YouTube Music"))
+        assertEquals("Bohemian Rhapsody", VoiceSearchMatcher.cleanVoiceQuery("Bohemian Rhapsody"))
+    }
+
     // Ranking
     @Test
     fun `exact match scores 1 and is order-independent`() {

@@ -1552,11 +1552,23 @@ class MainActivity : FragmentActivity() {
             return
         }
 
-        val query = intent.getStringExtra(SearchManager.QUERY)
-            ?: intent.getStringExtra("android.intent.extra.title")
-            ?: intent.getStringExtra("android.intent.extra.artist")
-            ?: intent.getStringExtra("android.intent.extra.album")
+        val rawTitle = intent.getStringExtra("android.intent.extra.title")?.takeIf { it.isNotBlank() }
+        val rawArtist = intent.getStringExtra("android.intent.extra.artist")?.takeIf { it.isNotBlank() }
+        val rawAlbum = intent.getStringExtra("android.intent.extra.album")?.takeIf { it.isNotBlank() }
+
+        val synthesizedFromExtras = when {
+            !rawTitle.isNullOrBlank() && !rawArtist.isNullOrBlank() -> "$rawTitle $rawArtist"
+            !rawTitle.isNullOrBlank() -> rawTitle
+            !rawArtist.isNullOrBlank() -> rawArtist
+            !rawAlbum.isNullOrBlank() -> rawAlbum
+            else -> null
+        }
+
+        val rawQuery = intent.getStringExtra(SearchManager.QUERY)
+            ?: synthesizedFromExtras
             ?: intent.getStringExtra("query")
+
+        val query = rawQuery?.let { com.metrolist.music.playback.VoiceSearchMatcher.cleanVoiceQuery(it) }?.takeIf { it.isNotBlank() }
 
         intent.action = null
         if (!query.isNullOrBlank()) {
