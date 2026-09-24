@@ -1950,10 +1950,20 @@ class MusicService :
             return
         }
 
-        val currentMediaMetadata = player.currentMetadata ?: return
+        // In Android Auto the media session may not have fully hydrated player.currentMetadata yet.
+        // Fall back to the service-level currentMediaMetadata StateFlow, and finally to the raw
+        // mediaId from the current MediaItem so we never silently abort.
+        val resolvedMetadata = player.currentMetadata
+            ?: currentMediaMetadata.value
 
+        // Capture index / id on the Main thread before launching the coroutine
         val currentIndex = player.currentMediaItemIndex
-        val currentMediaId = currentMediaMetadata.id
+        val currentMediaId = resolvedMetadata?.id ?: player.currentMediaItem?.mediaId ?: run {
+            Timber.tag(TAG).w("startRadioSeamlessly: no current media id, aborting")
+            return
+        }
+
+        Timber.tag(TAG).d("startRadioSeamlessly: starting radio for id=$currentMediaId index=$currentIndex")
 
         scope.launch(SilentHandler) {
             // Use simple videoId to let YouTube personalize recommendations
@@ -1974,31 +1984,34 @@ class MusicService :
                             .filterVideoSongs(dataStore.get(HideVideoSongsKey, false))
                     }
 
-                if (initialStatus.title != null) {
-                    queueTitle = initialStatus.title
+                // All player mutations must happen on Main (already our scope, but be explicit
+                // after the IO hop to be safe against dispatcher inheritance changes)
+                withContext(Dispatchers.Main) {
+                    if (initialStatus.title != null) {
+                        queueTitle = initialStatus.title
+                    }
+
+                    val radioItems =
+                        initialStatus.items.filter { item ->
+                            item.mediaId != currentMediaId
+                        }
+
+                    if (radioItems.isNotEmpty()) {
+                        val itemCount = player.mediaItemCount
+                        if (itemCount > currentIndex + 1) {
+                            player.removeMediaItems(currentIndex + 1, itemCount)
+                        }
+                        player.addMediaItems(currentIndex + 1, radioItems)
+                        if (player.shuffleModeEnabled) {
+                            val shufflePlaylistFirst = cachedShufflePlaylistFirst
+                            applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
+                        }
+                    }
+
+                    currentQueue = radioQueue
                 }
-
-                val radioItems =
-                    initialStatus.items.filter { item ->
-                        item.mediaId != currentMediaId
-                    }
-
-                if (radioItems.isNotEmpty()) {
-                    val itemCount = player.mediaItemCount
-
-                    if (itemCount > currentIndex + 1) {
-                        player.removeMediaItems(currentIndex + 1, itemCount)
-                    }
-
-                    player.addMediaItems(currentIndex + 1, radioItems)
-                    if (player.shuffleModeEnabled) {
-                        val shufflePlaylistFirst = cachedShufflePlaylistFirst
-                        applyShuffleOrder(player.currentMediaItemIndex, player.mediaItemCount, shufflePlaylistFirst)
-                    }
-                }
-
-                currentQueue = radioQueue
             } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "startRadioSeamlessly primary failed, trying related fallback")
                 try {
                     val nextResult =
                         withContext(Dispatchers.IO) {
@@ -2017,18 +2030,20 @@ class MusicService :
                                     .filterExplicit(cachedHideExplicit)
                                     .filterVideoSongs(cachedHideVideoSongs)
 
-                            if (radioItems.isNotEmpty()) {
-                                val itemCount = player.mediaItemCount
-                                if (itemCount > currentIndex + 1) {
-                                    player.removeMediaItems(currentIndex + 1, itemCount)
-                                }
-                                player.addMediaItems(currentIndex + 1, radioItems)
-                                if (player.shuffleModeEnabled) {
-                                    applyShuffleOrder(
-                                        player.currentMediaItemIndex,
-                                        player.mediaItemCount,
-                                        cachedShufflePlaylistFirst,
-                                    )
+                            withContext(Dispatchers.Main) {
+                                if (radioItems.isNotEmpty()) {
+                                    val itemCount = player.mediaItemCount
+                                    if (itemCount > currentIndex + 1) {
+                                        player.removeMediaItems(currentIndex + 1, itemCount)
+                                    }
+                                    player.addMediaItems(currentIndex + 1, radioItems)
+                                    if (player.shuffleModeEnabled) {
+                                        applyShuffleOrder(
+                                            player.currentMediaItemIndex,
+                                            player.mediaItemCount,
+                                            cachedShufflePlaylistFirst,
+                                        )
+                                    }
                                 }
                             }
                         }

@@ -77,6 +77,8 @@ import com.metrolist.music.ui.screens.settings.AndroidAutoSection
 import com.metrolist.music.ui.screens.settings.deserializeSections
 import com.metrolist.music.ui.screens.settings.serializeSections
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import timber.log.Timber
 
 class MediaLibrarySessionCallback
 @Inject
@@ -1078,9 +1080,35 @@ constructor(
                                     val radioItemsWithoutCurrent = radioStatus.items.filter { it.mediaId != selectedSong.id }
                                     withContext(Dispatchers.Main) {
                                         service.adoptQueue(radioQueue, radioStatus.title, radioStatus.items.size)
-                                        if (service.player.currentMediaItem?.mediaId == selectedSong.id && radioItemsWithoutCurrent.isNotEmpty()) {
-                                            val currentIndex = service.player.currentMediaItemIndex
-                                            service.player.addMediaItems(currentIndex + 1, radioItemsWithoutCurrent)
+
+                                        // The player may not have transitioned to the selected song yet because
+                                        // onSetMediaItems returns before ExoPlayer prepares. Retry for up to 3 s.
+                                        var retries = 0
+                                        val maxRetries = 6
+                                        while (retries < maxRetries) {
+                                            val currentId = service.player.currentMediaItem?.mediaId
+                                            if (currentId == selectedSong.id) {
+                                                if (radioItemsWithoutCurrent.isNotEmpty()) {
+                                                    val currentIndex = service.player.currentMediaItemIndex
+                                                    service.player.addMediaItems(currentIndex + 1, radioItemsWithoutCurrent)
+                                                    Timber.tag("MediaLibrarySessionCallback")
+                                                        .d("Voice radio expansion succeeded for ${selectedSong.id} after $retries retries")
+                                                }
+                                                break
+                                            }
+                                            retries++
+                                            if (retries >= maxRetries) {
+                                                // Player never landed on the song (e.g. user skipped quickly) — still add items
+                                                if (radioItemsWithoutCurrent.isNotEmpty() && service.player.mediaItemCount > 0) {
+                                                    val currentIndex = service.player.currentMediaItemIndex
+                                                    service.player.addMediaItems(currentIndex + 1, radioItemsWithoutCurrent)
+                                                    Timber.tag("MediaLibrarySessionCallback")
+                                                        .d("Voice radio expansion added without song match for ${selectedSong.id}")
+                                                }
+                                                break
+                                            }
+                                            // Brief pause then re-check on Main
+                                            withContext(Dispatchers.IO) { delay(500L) }
                                         }
                                     }
                                 }
