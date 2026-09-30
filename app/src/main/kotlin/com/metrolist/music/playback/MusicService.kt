@@ -2157,6 +2157,15 @@ class MusicService :
     }
 
     fun playNext(items: List<MediaItem>) {
+        if (!playerInitialized.value || !::player.isInitialized) {
+            Timber.tag(TAG).w("playNext called before player initialization, queuing request")
+            scope.launch {
+                playerInitialized.first { it }
+                playNext(items)
+            }
+            return
+        }
+
         // If queue is empty or player is idle, play immediately instead
         if (player.mediaItemCount == 0 || player.playbackState == STATE_IDLE) {
             player.setMediaItems(items)
@@ -2250,6 +2259,15 @@ class MusicService :
     }
 
     fun addToQueue(items: List<MediaItem>) {
+        if (!playerInitialized.value || !::player.isInitialized) {
+            Timber.tag(TAG).w("addToQueue called before player initialization, queuing request")
+            scope.launch {
+                playerInitialized.first { it }
+                addToQueue(items)
+            }
+            return
+        }
+
         if (dataStore.get(PreventDuplicateTracksInQueueKey, false)) {
             val itemIds = items.map { it.mediaId }.toSet()
             val indicesToRemove = mutableListOf<Int>()

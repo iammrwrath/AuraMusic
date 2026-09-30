@@ -310,6 +310,9 @@ class PlayerConnection(
             Timber.tag("PlayerConnection").d("playNext blocked - Listen Together guest")
             return
         }
+        if (!playerReadinessFlow.value) {
+            Timber.tag(TAG).w("playNext called before player ready; delegating to service")
+        }
         try {
             service.playNext(items)
         } catch (e: Exception) {
@@ -325,6 +328,9 @@ class PlayerConnection(
         if (!allowInternalSync && shouldBlockPlaybackChanges?.invoke() == true) {
             Timber.tag("PlayerConnection").d("addToQueue blocked - Listen Together guest")
             return
+        }
+        if (!playerReadinessFlow.value) {
+            Timber.tag(TAG).w("addToQueue called before player ready; delegating to service")
         }
         try {
             service.addToQueue(items)
