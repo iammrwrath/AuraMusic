@@ -82,6 +82,9 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE id = :songId LIMIT 1")
     suspend fun songEntity(songId: String): SongEntity?
 
+    @Query("SELECT id FROM song WHERE liked")
+    suspend fun likedSongIds(): List<String>
+
     @Query("SELECT * FROM song WHERE liked ORDER BY title")
     suspend fun likedSongEntitiesByNameAsc(): List<SongEntity>
 
@@ -137,7 +140,7 @@ interface DatabaseDao {
     @Query("SELECT * FROM artist WHERE bookmarkedAt IS NOT NULL ORDER BY name")
     suspend fun bookmarkedArtistEntitiesByNameAsc(): List<ArtistEntity>
 
-    @Query("SELECT * FROM playlist ORDER BY name")
+    @Query("SELECT * FROM playlist ORDER BY name COLLATE NOCASE ASC, rowId ASC")
     suspend fun playlistEntitiesByNameAsc(): List<PlaylistEntity>
 
     @Query("SELECT * FROM song WHERE isEpisode = 1 AND inLibrary IS NOT NULL ORDER BY inLibrary")
@@ -1182,42 +1185,42 @@ interface DatabaseDao {
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY lastUpdateTime DESC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY lastUpdateTime DESC, rowId DESC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsByUpdatedDateDesc(limit: Int, offset: Int): List<Playlist>
 
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY lastUpdateTime ASC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY lastUpdateTime ASC, rowId ASC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsByUpdatedDateAsc(limit: Int, offset: Int): List<Playlist>
 
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY name COLLATE NOCASE ASC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY name COLLATE NOCASE ASC, rowId ASC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsByNameAsc(limit: Int, offset: Int): List<Playlist>
 
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY name COLLATE NOCASE DESC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY name COLLATE NOCASE DESC, rowId DESC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsByNameDesc(limit: Int, offset: Int): List<Playlist>
 
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY songCount DESC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY songCount DESC, rowId DESC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsBySongCountDesc(limit: Int, offset: Int): List<Playlist>
 
     @Transaction
     @Query(
         "SELECT *, (SELECT COUNT(*) FROM playlist_song_map WHERE playlistId = playlist.id) AS songCount " +
-            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY songCount ASC LIMIT :limit OFFSET :offset",
+            "FROM playlist WHERE bookmarkedAt IS NOT NULL ORDER BY songCount ASC, rowId ASC LIMIT :limit OFFSET :offset",
     )
     suspend fun playlistsBySongCountAsc(limit: Int, offset: Int): List<Playlist>
 

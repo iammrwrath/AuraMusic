@@ -5,6 +5,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,5 +41,21 @@ class OpenRouterServiceTest {
                 .content
                 .startsWith("Romanize"),
         )
+    }
+
+    @Test
+    fun `openai baseUrl omits temperature and max_tokens`() {
+        val request =
+            buildTranslationRequest(
+                text = "hello",
+                targetLanguage = "Spanish",
+                model = "gpt-5",
+                mode = "Translated",
+                customSystemPrompt = "",
+                baseUrl = "https://api.openai.com/v1/chat/completions",
+            )
+
+        assertFalse("temperature" in request)
+        assertFalse("max_tokens" in request)
     }
 }

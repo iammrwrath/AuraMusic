@@ -143,7 +143,7 @@ fun AndroidAutoSettings(
 
     val (androidAutoLyrics, onAndroidAutoLyricsChange) = rememberPreference(
         key = AndroidAutoLyricsKey,
-        defaultValue = true
+        defaultValue = false
     )
     val (androidAutoLyricsTranslation, onAndroidAutoLyricsTranslationChange) = rememberPreference(
         key = AndroidAutoLyricsTranslationKey,

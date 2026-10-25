@@ -89,6 +89,7 @@ constructor(
 ) : MediaLibrarySession.Callback {
     private val scope = CoroutineScope(Dispatchers.Main) + Job()
     private val searchCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<Song>>>()
+    private val youtubeBrowseCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<MediaItem>>>()
     lateinit var service: MusicService
     var toggleLike: () -> Unit = {}
     var toggleStartRadio: () -> Unit = {}
@@ -322,42 +323,54 @@ constructor(
                         if (!context.dataStore.get(AndroidAutoYouTubePlaylistsKey, false)) {
                             emptyList()
                         } else {
-                            try {
-                                val allSections = mutableListOf<com.metrolist.innertube.pages.HomePage.Section>()
-                                var continuation: String? = null
-                                val maxPages = 4
+                            val now = System.currentTimeMillis()
+                            val cached = youtubeBrowseCache[parentId]
+                            if (cached != null && (now - cached.first) < YOUTUBE_BROWSE_CACHE_TTL_MS && page > 0) {
+                                cached.second
+                            } else if (cached != null && (now - cached.first) < YOUTUBE_BROWSE_CACHE_TTL_MS) {
+                                cached.second
+                            } else {
+                                try {
+                                    val allSections = mutableListOf<com.metrolist.innertube.pages.HomePage.Section>()
+                                    var continuation: String? = null
+                                    val maxPages = 4
 
-                                for (page in 0 until maxPages) {
-                                    val result = YouTube.home(continuation)
-                                        .onFailure { reportException(it) }
-                                        .getOrNull() ?: break
-                                    allSections.addAll(result.sections)
-                                    continuation = result.continuation
-                                    if (continuation == null) break
+                                    for (pageIdx in 0 until maxPages) {
+                                        val result = YouTube.home(continuation)
+                                            .onFailure { reportException(it) }
+                                            .getOrNull() ?: break
+                                        allSections.addAll(result.sections)
+                                        continuation = result.continuation
+                                        if (continuation == null) break
+                                    }
+
+                                    // Drop playlists already saved to the local library,
+                                    // which are exposed under MusicService.PLAYLIST.
+                                    val savedBrowseIds = database.bookmarkedPlaylistBrowseIds().toSet()
+
+                                    val playlists = allSections
+                                        .flatMap { it.items }
+                                        .filterIsInstance<PlaylistItem>()
+                                        .filterNot { it.id in savedBrowseIds }
+                                        .distinctBy { it.id }
+
+                                    val items = playlists.map { playlist ->
+                                        browsableMediaItem(
+                                            "${MusicService.YOUTUBE_PLAYLIST}/${playlist.id}",
+                                            playlist.title,
+                                            playlist.author?.name,
+                                            playlist.thumbnail?.toUri(),
+                                            MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                                        )
+                                    }
+                                    if (items.isNotEmpty()) {
+                                        youtubeBrowseCache[parentId] = now to items
+                                    }
+                                    items
+                                } catch (e: Exception) {
+                                    reportException(e)
+                                    emptyList()
                                 }
-
-                                // Drop playlists already saved to the local library,
-                                // which are exposed under MusicService.PLAYLIST.
-                                val savedBrowseIds = database.bookmarkedPlaylistBrowseIds().toSet()
-
-                                val playlists = allSections
-                                    .flatMap { it.items }
-                                    .filterIsInstance<PlaylistItem>()
-                                    .filterNot { it.id in savedBrowseIds }
-                                    .distinctBy { it.id }
-
-                                playlists.map { playlist ->
-                                    browsableMediaItem(
-                                        "${MusicService.YOUTUBE_PLAYLIST}/${playlist.id}",
-                                        playlist.title,
-                                        playlist.author?.name,
-                                        playlist.thumbnail?.toUri(),
-                                        MediaMetadata.MEDIA_TYPE_PLAYLIST,
-                                    )
-                                }
-                            } catch (e: Exception) {
-                                reportException(e)
-                                emptyList()
                             }
                         }
                     }
@@ -365,50 +378,60 @@ constructor(
                     else ->
                         when {
                             parentId.startsWith("${MusicService.YOUTUBE_PLAYLIST}/") -> {
-                                val playlistId = parentId.removePrefix("${MusicService.YOUTUBE_PLAYLIST}/")
-                                try {
-                                    val songs = YouTube.playlist(playlistId).getOrNull()?.songs
-                                        ?.take(100)
-                                        ?.filterExplicit(context.dataStore.get(HideExplicitKey, false))
-                                        ?.filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
-                                        ?: emptyList()
+                                val now = System.currentTimeMillis()
+                                val cached = youtubeBrowseCache[parentId]
+                                if (cached != null && (now - cached.first) < YOUTUBE_BROWSE_CACHE_TTL_MS) {
+                                    cached.second
+                                } else {
+                                    val playlistId = parentId.removePrefix("${MusicService.YOUTUBE_PLAYLIST}/")
+                                    try {
+                                        val songs = YouTube.playlist(playlistId).getOrNull()?.songs
+                                            ?.take(100)
+                                            ?.filterExplicit(context.dataStore.get(HideExplicitKey, false))
+                                            ?.filterVideoSongs(context.dataStore.get(HideVideoSongsKey, false))
+                                            ?: emptyList()
 
-                                    // Add shuffle item at the top
-                                    listOf(
-                                        MediaItem.Builder()
-                                            .setMediaId("$parentId/${MusicService.SHUFFLE_ACTION}")
-                                            .setMediaMetadata(
-                                                MediaMetadata.Builder()
-                                                    .setTitle(context.getString(R.string.shuffle))
-                                                    .setArtworkUri(drawableUri(R.drawable.shuffle))
-                                                    .setIsPlayable(true)
-                                                    .setIsBrowsable(false)
-                                                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                                                    .build()
-                                            ).build()
-                                    ) + songs.map { songItem ->
-                                        MediaItem.Builder()
-                                            .setMediaId("$parentId/${songItem.id}")
-                                            .setMediaMetadata(
-                                                MediaMetadata.Builder()
-                                                    .setTitle(songItem.title)
-                                                    .setSubtitle(songItem.artists.joinToArtistString(getArtistSeparator(context)) {
-                                                        ArtistNameAliases.resolve(it.id, it.name)
-                                                    })
-                                                    .setArtist(songItem.artists.joinToArtistString(getArtistSeparator(context)) {
-                                                        ArtistNameAliases.resolve(it.id, it.name)
-                                                    })
-                                                    .setArtworkUri(songItem.thumbnail.toUri())
-                                                    .setIsPlayable(true)
-                                                    .setIsBrowsable(false)
-                                                    .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
-                                                    .build()
-                                            )
-                                            .build()
+                                        // Add shuffle item at the top
+                                        val items = listOf(
+                                            MediaItem.Builder()
+                                                .setMediaId("$parentId/${MusicService.SHUFFLE_ACTION}")
+                                                .setMediaMetadata(
+                                                    MediaMetadata.Builder()
+                                                        .setTitle(context.getString(R.string.shuffle))
+                                                        .setArtworkUri(drawableUri(R.drawable.shuffle))
+                                                        .setIsPlayable(true)
+                                                        .setIsBrowsable(false)
+                                                        .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                                                        .build()
+                                                ).build()
+                                        ) + songs.map { songItem ->
+                                            MediaItem.Builder()
+                                                .setMediaId("$parentId/${songItem.id}")
+                                                .setMediaMetadata(
+                                                    MediaMetadata.Builder()
+                                                        .setTitle(songItem.title)
+                                                        .setSubtitle(songItem.artists.joinToArtistString(getArtistSeparator(context)) {
+                                                            ArtistNameAliases.resolve(it.id, it.name)
+                                                        })
+                                                        .setArtist(songItem.artists.joinToArtistString(getArtistSeparator(context)) {
+                                                            ArtistNameAliases.resolve(it.id, it.name)
+                                                        })
+                                                        .setArtworkUri(songItem.thumbnail.toUri())
+                                                        .setIsPlayable(true)
+                                                        .setIsBrowsable(false)
+                                                        .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                                                        .build()
+                                                )
+                                                .build()
+                                        }
+                                        if (songs.isNotEmpty()) {
+                                            youtubeBrowseCache[parentId] = now to items
+                                        }
+                                        items
+                                    } catch (e: Exception) {
+                                        reportException(e)
+                                        emptyList()
                                     }
-                                } catch (e: Exception) {
-                                    reportException(e)
-                                    emptyList()
                                 }
                             }
 
@@ -1277,6 +1300,7 @@ internal fun <T> List<T>.paginate(
 }
 
 internal const val MAX_ANDROID_AUTO_PAGE_SIZE = 500
+private const val YOUTUBE_BROWSE_CACHE_TTL_MS = 5 * 60 * 1_000L
 
 internal data class AndroidAutoPageRequest(
     val offset: Int,

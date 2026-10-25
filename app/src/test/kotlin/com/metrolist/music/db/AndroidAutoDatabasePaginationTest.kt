@@ -151,6 +151,41 @@ class AndroidAutoDatabasePaginationTest {
             id = { it.id },
             loadPage = { limit, offset -> database.dao.playlistsByCreateDateAsc(limit, offset) },
         )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsByCreateDateDesc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsByUpdatedDateDesc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsByUpdatedDateAsc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsByNameAsc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsByNameDesc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsBySongCountDesc(limit, offset) },
+        )
+        assertCompletePagination(
+            expectedSize = 1_002,
+            id = { it.id },
+            loadPage = { limit, offset -> database.dao.playlistsBySongCountAsc(limit, offset) },
+        )
     }
 
     private suspend fun <T> assertCompletePagination(

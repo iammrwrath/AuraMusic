@@ -60,6 +60,7 @@ object OpenRouterService {
                             model = model,
                             mode = mode,
                             customSystemPrompt = customSystemPrompt,
+                            baseUrl = baseUrl,
                         )
                     val request =
                         Request
@@ -114,6 +115,7 @@ internal fun buildTranslationRequest(
     model: String,
     mode: String,
     customSystemPrompt: String,
+    baseUrl: String = OpenRouterDefaultBaseUrl,
     stream: Boolean = false,
 ): JsonObject {
     val lineCount = text.lines().size
@@ -213,8 +215,12 @@ Output MUST be a JSON array with EXACTLY $lineCount strings."""
             },
         )
         if (model.isNotBlank()) put("model", model)
-        put("temperature", 0.3)
-        put("max_tokens", lineCount * 100)
+        // OpenAI's GPT-5 models reject max_tokens and non-default temperatures, and reasoning tokens
+        // count against any output cap, so let them use their defaults.
+        if (!baseUrl.contains("api.openai.com")) {
+            put("temperature", 0.3)
+            put("max_tokens", lineCount * 100)
+        }
         if (stream) put("stream", true)
     }
 }
