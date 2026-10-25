@@ -19,6 +19,7 @@ import com.metrolist.innertubex.extraction.PoTokenResult
 import com.metrolist.innertubex.extraction.StreamResolveException
 import com.metrolist.innertubex.extraction.TokenProvider
 import com.metrolist.innertubex.extraction.TokenProviderCapabilities
+import com.metrolist.innertubex.extraction.YtConfigParser
 import com.metrolist.innertubex.extraction.YtConfigParserImpl
 import com.metrolist.innertubex.extraction.generateClientPlaybackNonce
 import com.metrolist.innertubex.extraction.strategy.PoTokenProviderKind
@@ -33,7 +34,7 @@ import kotlin.time.Clock
 /** The sole stream extraction entry point for the Android app. */
 object InnerTubeXPlayer {
     private const val TAG = "InnerTubeXPlayer"
-    private const val WEB_REMIX_FAILURE_TTL_MS = 5 * 60 * 1000L
+    private const val STREAM_CLIENT_FAILURE_TTL_MS = 5 * 60 * 1000L
     private const val DEFAULT_STREAM_TTL_SECONDS = 5 * 60
 
     @Volatile
@@ -43,7 +44,7 @@ object InnerTubeXPlayer {
     private var currentBundle: ExtractionBundle? = null
 
     private val bundleMutex = Mutex()
-    private val webRemixFailures = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    private val streamClientFailures = java.util.concurrent.ConcurrentHashMap<String, FailedStreamClients>()
 
     @Synchronized
     fun initialize(context: Context) {
@@ -72,10 +73,7 @@ object InnerTubeXPlayer {
                     allowSabr = false,
                     allowBoundedRange = allowBoundedRange,
                 )
-            val excludedClients =
-                buildSet {
-                    if (hasRecentWebRemixFailure(videoId)) add("WEB_REMIX")
-                }
+            val excludedClients = failedStreamClients(videoId)
             val stream =
                 requireNotNull(
                     bundle().extractor.extract(
@@ -120,27 +118,40 @@ object InnerTubeXPlayer {
             allowBoundedRange = allowBoundedRange,
         )
 
+    internal fun markStreamClientFailed(
+        videoId: String,
+        clientName: String,
+        nowMs: Long = System.currentTimeMillis(),
+    ) {
+        streamClientFailures.compute(videoId) { _, failures ->
+            FailedStreamClients(failures?.clientNames.orEmpty() + clientName, nowMs)
+        }
+    }
+
     fun markWebRemixFailed(videoId: String) {
-        webRemixFailures[videoId] = System.currentTimeMillis()
+        markStreamClientFailed(videoId, "WEB_REMIX")
+    }
+
+    fun clearStreamClientFailures() {
+        streamClientFailures.clear()
     }
 
     fun clearWebRemixFailures() {
-        webRemixFailures.clear()
+        clearStreamClientFailures()
     }
 
-    suspend fun refreshAfterStreamRejection(): Boolean {
-        val changed = bundle().cipherService.refreshAfterStreamRejection()
-        if (changed) clearWebRemixFailures()
-        return changed
-    }
+    suspend fun refreshAfterStreamRejection(): Boolean = bundle().cipherService.refreshAfterStreamRejection()
 
-    private fun hasRecentWebRemixFailure(videoId: String): Boolean {
-        val failedAt = webRemixFailures[videoId] ?: return false
-        if ((System.currentTimeMillis() - failedAt) !in 0 until WEB_REMIX_FAILURE_TTL_MS) {
-            webRemixFailures.remove(videoId, failedAt)
-            return false
+    internal fun failedStreamClients(
+        videoId: String,
+        nowMs: Long = System.currentTimeMillis(),
+    ): Set<String> {
+        val failures = streamClientFailures[videoId] ?: return emptySet()
+        if ((nowMs - failures.failedAtMs) !in 0 until STREAM_CLIENT_FAILURE_TTL_MS) {
+            streamClientFailures.remove(videoId, failures)
+            return emptySet()
         }
-        return true
+        return failures.clientNames
     }
 
     private suspend fun bundle(): ExtractionBundle {
@@ -174,7 +185,7 @@ object InnerTubeXPlayer {
                             latestTransport.innerTube,
                             remoteStore,
                             logger,
-                        ),
+                        ).withEmbeddedConfigFallback(),
                     cipherService = cipherService,
                     innerTube = latestTransport.innerTube,
                     tokenProvider = tokenProvider,
@@ -255,6 +266,11 @@ object InnerTubeXPlayer {
         val extractor: InnerTubeExtractor,
     )
 
+    private data class FailedStreamClients(
+        val clientNames: Set<String>,
+        val failedAtMs: Long,
+    )
+
     private class AndroidPlayerConfigRepository(context: Context) : PlayerConfigRepository {
         private val preferences = context.getSharedPreferences("innertubex_player_config", Context.MODE_PRIVATE)
 
@@ -279,6 +295,19 @@ object InnerTubeXPlayer {
                 "https://raw.githubusercontent.com/ZemerTeam/zemer-cipher/master/library/src/main/assets/player_configs.json"
         }
     }
+
+    internal fun YtConfigParser.withEmbeddedConfigFallback(): YtConfigParser =
+        object : YtConfigParser by this {
+            override suspend fun fetchConfig(
+                videoId: String,
+                useLoginCookies: Boolean,
+            ) =
+                try {
+                    this@withEmbeddedConfigFallback.fetchConfig(videoId, useLoginCookies)
+                } catch (_: IllegalStateException) {
+                    this@withEmbeddedConfigFallback.fetchEmbeddedConfig(videoId, useLoginCookies = false)
+                }
+        }
 
     private fun AudioQuality.toInnerTubeX(connectivityManager: ConnectivityManager): InnerTubeXAudioQuality =
         when (this) {

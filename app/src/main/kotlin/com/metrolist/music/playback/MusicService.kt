@@ -438,7 +438,7 @@ class MusicService :
     private var fadingPlayer: ExoPlayer? = null
     private var isCrossfading = false
     private var crossfadeJob: Job? = null
-    private var isRunning = false
+    private var taskCleared = false
     private var mediaSession: MediaLibrarySession? = null
     private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
 
@@ -659,9 +659,16 @@ class MusicService :
         // On some OEMs (e.g. MIUI), even a DataStore read can be slow
         // enough to miss the window, so we promote before any I/O.
         ensureForegroundChannelExists()
-        if (!ensureStartedAsForegroundOrStop()) {
-            return
-        }
+        // Attempt foreground promotion immediately for startForegroundService() callers,
+        // but NEVER abort onCreate() if denied (e.g. when created via bindService(BIND_AUTO_CREATE)
+        // on Android 15-17 before the window is interactive). Aborting onCreate() while bound
+        // leaves MusicService alive in memory with playerInitialized=false forever.
+        startForegroundSafely(
+            notification = createFallbackForegroundNotification(),
+            deniedMessage = "Foreground promotion deferred during onCreate; continuing player initialization",
+            failureMessage = "Failed to enter foreground during onCreate; continuing player initialization",
+            stopOnFailure = false,
+        )
 
         // Read ALL startup preferences in one shot so that subsequent code
         // never calls dataStore.get() (which does runBlocking internally).
@@ -693,6 +700,7 @@ class MusicService :
                 ): MediaNotification {
                     val trackingCallback =
                         MediaNotification.Provider.Callback { notification ->
+                            if (taskCleared) return@Callback
                             latestMediaNotification = notification.notification
                             onNotificationChangedCallback.onNotificationChanged(notification)
                         }
@@ -1868,6 +1876,8 @@ class MusicService :
         playWhenReady: Boolean = true,
         restoringQueue: Boolean = false,
     ) {
+        if (taskCleared && restoringQueue) return
+        if (playWhenReady) taskCleared = false
         if (!playerInitialized.value) {
             Timber.tag(TAG).w("playQueue called before player initialization, queuing request")
             scope.launch {
@@ -3107,7 +3117,6 @@ class MusicService :
         }
         return error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
             error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
-            error.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE ||
             error.cause is java.net.ConnectException ||
             error.cause is java.net.UnknownHostException ||
             (error.cause as? PlaybackException)?.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
@@ -3139,6 +3148,15 @@ class MusicService :
 
     private fun isRemotePlaybackError(error: PlaybackException): Boolean =
         error.errorCode == PlaybackException.ERROR_CODE_REMOTE_ERROR
+
+    private fun isStreamClientError(error: PlaybackException): Boolean =
+        error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
+            error.errorCode == PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE ||
+            error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED ||
+            error.errorCode == PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED
 
     /**
      * Checks if the error is caused by premature stream termination, unexpected EOF,
@@ -3241,15 +3259,12 @@ class MusicService :
                 handleGenericIOError(mediaId)
                 return
             }
-        }
 
-        // Transient source failures can surface without a more specific I/O code.
-        if (error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
-            error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
-        ) {
-            Timber.tag(TAG).d("IO error detected (${error.errorCode}), attempting recovery")
-            handleGenericIOError(mediaId)
-            return
+            isStreamClientError(error) -> {
+                Timber.tag(TAG).d("Stream client error detected (${error.errorCode}), trying the next client")
+                handleStreamClientError(mediaId, failedStreamClient)
+                return
+            }
         }
 
         if (dataStore.get(AutoSkipNextOnErrorKey, false)) {
@@ -3467,9 +3482,7 @@ class MusicService :
         }
 
         songUrlCache.invalidate(mediaId)
-        if (failedStreamClient == "WEB_REMIX") {
-            InnerTubeXPlayer.markWebRemixFailed(mediaId)
-        }
+        failedStreamClient?.let { InnerTubeXPlayer.markStreamClientFailed(mediaId, it) }
 
         retryJob?.cancel()
         retryJob =
@@ -3528,18 +3541,16 @@ class MusicService :
         incrementRetryCount(mediaId)
 
         songUrlCache.invalidate(mediaId)
-        if (failedStreamClient == "WEB_REMIX") {
-            InnerTubeXPlayer.markWebRemixFailed(mediaId)
-        }
+        failedStreamClient?.let { InnerTubeXPlayer.markStreamClientFailed(mediaId, it) }
         Timber.tag(TAG).d("Cleared cached URL after $retryReason (client=$failedStreamClient)")
 
         if (refreshCipherConfig) {
             // A rejection can mean the cipher produced a wrong-but-non-throwing signature. If a
-            // rate-limited refresh corrects the table, allow WEB_REMIX again on the next resolution.
+            // rate-limited refresh corrects the table, allow failed clients again on the next resolution.
             scope.launch {
                 if (InnerTubeXPlayer.refreshAfterStreamRejection()) {
-                    Timber.tag(TAG).d("Player config changed after stream rejection — restoring WEB_REMIX")
-                    InnerTubeXPlayer.clearWebRemixFailures()
+                    Timber.tag(TAG).d("Player config changed after stream rejection: restoring stream clients")
+                    InnerTubeXPlayer.clearStreamClientFailures()
                 }
             }
         }
@@ -3602,6 +3613,23 @@ class MusicService :
 
                 Timber.tag(TAG).d("Retrying playback for $mediaId after IO_FILE_NOT_FOUND")
             }
+    }
+
+    private fun handleStreamClientError(
+        mediaId: String?,
+        failedStreamClient: String?,
+    ) {
+        if (mediaId == null) {
+            handleFinalFailure()
+            return
+        }
+
+        refreshStreamAndRetry(
+            mediaId = mediaId,
+            failedStreamClient = failedStreamClient,
+            refreshCipherConfig = false,
+            retryReason = "stream client error",
+        )
     }
 
     /**
@@ -4503,36 +4531,54 @@ class MusicService :
         shutdownDeferred.complete(Unit)
     }
 
-    override fun onBind(intent: Intent?) = super.onBind(intent) ?: binder
+    override fun onBind(intent: Intent?) =
+        super.onBind(intent) ?: binder.also {
+            // The app UI rebinding to a still-alive instance means the user is back.
+            taskCleared = false
+        }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (dataStore.get(StopMusicOnTaskClearKey, false)) {
-            if (!::player.isInitialized) {
-                stopSelf()
-                return
-            }
-            // Remote playback (Cast) is independent of the local ExoPlayer; ending the session
-            // is required or audio keeps playing on the Cast device.
-            runCatching {
-                if (castConnectionHandler?.isCasting?.value == true) {
-                    castConnectionHandler?.disconnect()
-                }
-                player.stop()
-                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-                controllerFuture?.let { MediaController.releaseFuture(it) }
-                controllerFuture = null
-                // Media3: coordinates notification/foreground teardown and stopSelf; required when
-                // playback was ongoing (default super.onTaskRemoved keeps the service alive).
-                pauseAllPlayersAndStopSelf()
-            }.onFailure { e ->
-                Timber.tag(TAG).e(e, "Failed to stop playback on task clear")
-                controllerFuture?.let { MediaController.releaseFuture(it) }
-                controllerFuture = null
-                runCatching { pauseAllPlayersAndStopSelf() }.onFailure { stopSelf() }
-            }
-            return
+            stopOnTaskClear()
+        } else {
+            super.onTaskRemoved(rootIntent)
         }
-        super.onTaskRemoved(rootIntent)
+    }
+
+    /**
+     * Idempotent hard stop: besides the current player, in-flight playQueue work, crossfade
+     * players and late Media3 notification updates can otherwise resume audio or repost the
+     * notification after the task is cleared.
+     */
+    fun stopOnTaskClear() {
+        if (taskCleared) return
+        taskCleared = true
+        crossfadeJob?.cancel()
+        crossfadeJob = null
+        crossfadeMessage?.cancel()
+        // Remote playback (Cast) is independent of the local ExoPlayer; ending the session
+        // is required or audio keeps playing on the Cast device.
+        runCatching {
+            if (castConnectionHandler?.isCasting?.value == true) {
+                castConnectionHandler?.disconnect()
+            }
+            if (::player.isInitialized) {
+                listOfNotNull(player, secondaryPlayer, fadingPlayer).forEach {
+                    it.pause()
+                    it.stop()
+                }
+                wasPlayingBeforeAudioFocusLoss = false
+                abandonAudioFocus()
+            }
+        }.onFailure { Timber.tag(TAG).e(it, "Failed to stop playback on task clear") }
+        controllerFuture?.let { MediaController.releaseFuture(it) }
+        controllerFuture = null
+        latestMediaNotification = null
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID)
+        // Media3: coordinates notification/foreground teardown and stopSelf; required when
+        // playback was ongoing (default super.onTaskRemoved keeps the service alive).
+        runCatching { pauseAllPlayersAndStopSelf() }.onFailure { stopSelf() }
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = mediaSession
@@ -4541,6 +4587,7 @@ class MusicService :
         session: MediaSession,
         startInForegroundRequired: Boolean,
     ) {
+        if (taskCleared) return
         try {
             super.onUpdateNotification(session, startInForegroundRequired)
         } catch (e: ForegroundServiceStartNotAllowedException) {
@@ -4559,6 +4606,10 @@ class MusicService :
         flags: Int,
         startId: Int,
     ): Int {
+        if (taskCleared) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         // On Android O+, every startForegroundService() call requires
         // Service.startForeground() to be called within a short timeout.
         // Some OEMs (e.g. MIUI) strictly enforce this even when the
@@ -4568,9 +4619,7 @@ class MusicService :
         val isNotificationDismissal =
             intent?.getBooleanExtra(MediaNotification.NOTIFICATION_DISMISSED_EVENT_KEY, false) == true
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isNotificationDismissal) {
-            if (!ensureForegroundWithLatestNotificationOrStop()) {
-                return START_NOT_STICKY
-            }
+            tryEnsureForegroundWithLatestNotification()
         }
 
         when (intent?.action) {
@@ -4824,16 +4873,9 @@ class MusicService :
             return
         }
 
-        if (player.isPlaying) {
+        if (player.isPlaying || player.playWhenReady || player.playbackState == Player.STATE_BUFFERING) {
             Timber.tag(TAG).w("Keeping playback alive after denied foreground restart request")
             return
-        }
-
-        runCatching {
-            pauseAllPlayersAndStopSelf()
-        }.onFailure {
-            Timber.tag(TAG).w(it, "Failed to stop service after foreground start denial")
-            stopSelf()
         }
     }
 

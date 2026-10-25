@@ -60,7 +60,9 @@ def search_candidate_files(issue_text: str):
     # 3. Domain error keywords in issue text
     playback_keywords = [
         "ExoPlaybackException", "Source error", "MatroskaExtractor", "EOFException",
-        "errorCode=2000", "AudioTrack", "DefaultExtractorInput", "ProgressiveMediaPeriod"
+        "errorCode=2000", "AudioTrack", "DefaultExtractorInput", "ProgressiveMediaPeriod",
+        "playQueue called before player", "ForegroundServiceStartNotAllowedException",
+        "EJS solve failed", "poToken generation timed out", "StreamResolveException"
     ]
     if any(k in issue_text for k in playback_keywords):
         for f in all_files:
@@ -239,6 +241,7 @@ A user reported the following bug / diagnostic report from their mobile device:
 
 Please perform the following:
 1. Determine whether the diagnostic report and logs contain an actual error, crash, or bug.
+   IMPORTANT: Repeated `W/MusicService : playQueue called before player initialization, queuing request` or `ForegroundServiceStartNotAllowedException` or `EJS solve failed` are CRITICAL playback bugs where the player failed to initialize or extract streams — NEVER classify those as normal/healthy operation!
    If the report shows normal/healthy operation with no crashes or errors, state clearly in ## DIAGNOSIS that the logs indicate healthy operation without bugs, and output:
    ## PATCH
    None
@@ -280,7 +283,10 @@ Format your response strictly as follows:
     patch_content = extract_patch(response_text)
 
     has_error_in_issue = any(
-        err in full_issue_text for err in ["Exception", "FATAL", "Crash", "crash", "E/AuraMusic", "E/AndroidRuntime", "Error", "error:"]
+        err in full_issue_text for err in [
+            "Exception", "FATAL", "Crash", "crash", "E/AuraMusic", "E/AndroidRuntime", "Error", "error:",
+            "playQueue called before player", "ForegroundServiceStartNotAllowedException", "EJS solve failed"
+        ]
     )
     is_healthy_diagnosis = any(
         phrase in diagnosis.lower() for phrase in ["no error", "operating normally", "healthy", "no bug", "no crash", "normal operation"]
