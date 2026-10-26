@@ -862,6 +862,7 @@ fun HomeScreen(
 
     val quickPicksLazyGridState = rememberLazyGridState()
     val forgottenFavoritesLazyGridState = rememberLazyGridState()
+    val keepListeningLazyGridState = rememberLazyGridState()
 
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val accountImageUrl by viewModel.accountImageUrl.collectAsStateWithLifecycle()
@@ -2166,7 +2167,7 @@ fun HomeScreen(
                                 item(key = "keep_listening_list") {
                                     val rows = if (keepListeningList.size > 6) 2 else 1
                                     LazyHorizontalGrid(
-                                        state = remember("keep_listening_grid") { LazyGridState() },
+                                        state = keepListeningLazyGridState,
                                         rows = GridCells.Fixed(rows),
                                         contentPadding =
                                             WindowInsets.systemBars

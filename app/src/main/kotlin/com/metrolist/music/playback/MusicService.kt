@@ -32,6 +32,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.LruCache
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.datastore.preferences.core.Preferences
@@ -551,6 +552,9 @@ class MusicService :
     private var cachedShufflePlaylistFirst = false
     @Volatile
     private var cachedAutoLoadMore = true
+    @Volatile
+    private var cachedEnableSongCache = true
+    private val formatContentLengthCache = LruCache<String, Long>(256)
 
     // URL cache for stream URLs - class-level so it can be invalidated on errors
     private val songUrlCache = StreamUrlCache()
@@ -864,6 +868,7 @@ class MusicService :
                     Timber.tag(TAG).i("RELOADING STREAM: $mediaId at position ${currentPosition}ms")
 
                     songUrlCache.invalidate(mediaId)
+                    formatContentLengthCache.remove(mediaId)
 
                     // CRITICAL: Clear caches synchronously to prevent format parsing errors
                     runBlocking(Dispatchers.IO) {
@@ -1302,6 +1307,9 @@ class MusicService :
         }
         scope.launch {
             dataStore.data.map { it[AutoLoadMoreKey] ?: true }.distinctUntilChanged().collect { cachedAutoLoadMore = it }
+        }
+        scope.launch {
+            dataStore.data.map { it[EnableSongCacheKey] ?: true }.distinctUntilChanged().collect { cachedEnableSongCache = it }
         }
         if (startupPrefs!![PersistentQueueKey] ?: true) {
             val queueFile = filesDir.resolve(PERSISTENT_QUEUE_FILE)
@@ -4050,18 +4058,19 @@ class MusicService :
             val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)
 
             if (!shouldBypassCache) {
-                val usePlayerCache = dataStore.get(EnableSongCacheKey, true)
+                val usePlayerCache = cachedEnableSongCache
 
-                val contentLength =
-                    runBlocking(Dispatchers.IO) {
-                        database.song(mediaId).first()?.format?.contentLength
-                    } ?: ContentMetadata
+                val contentLength: Long? = formatContentLengthCache.get(mediaId)
+                    ?: runBlocking(Dispatchers.IO) {
+                        database.formatOnce(mediaId)?.contentLength
+                    }?.also { formatContentLengthCache.put(mediaId, it) }
+                    ?: ContentMetadata
                         .getContentLength(downloadCache.getContentMetadata(mediaId))
                         .takeIf { it > 0L }
-                val requiredLength =
+                val requiredLength: Long =
                     when {
                         dataSpec.length >= 0 -> dataSpec.length
-                        contentLength != null -> (contentLength - dataSpec.position).coerceAtLeast(1)
+                        contentLength != null -> (contentLength - dataSpec.position).coerceAtLeast(1L)
                         else -> CHUNK_LENGTH // contentLength unknown yet — fall back to old probe size
                     }
 
@@ -4147,6 +4156,7 @@ class MusicService :
                 }
 
                 format.contentLength?.let { contentLength ->
+                    formatContentLengthCache.put(mediaId, contentLength)
                     database.query {
                         upsert(
                             FormatEntity(
@@ -4355,43 +4365,54 @@ class MusicService :
                     playbackState = player.playbackState,
                 )
 
-            runCatching {
-                filesDir.resolve(PERSISTENT_QUEUE_FILE).outputStream().use { fos ->
-                    ObjectOutputStream(fos).use { oos ->
-                        oos.writeObject(persistQueue)
-                    }
-                }
-                Timber.tag(TAG).d("Queue saved successfully")
-            }.onFailure {
-                Timber.tag(TAG).e(it, "Failed to save queue")
-                reportException(it)
-            }
-
-            runCatching {
-                filesDir.resolve(PERSISTENT_AUTOMIX_FILE).outputStream().use { fos ->
-                    ObjectOutputStream(fos).use { oos ->
-                        oos.writeObject(persistAutomix)
-                    }
-                }
-                Timber.tag(TAG).d("Automix saved successfully")
-            }.onFailure {
-                Timber.tag(TAG).e(it, "Failed to save automix")
-                reportException(it)
-            }
-
-            // While paused nothing changes, so skip the periodic rewrite.
-            if (force || persistPlayerState != lastSavedPlayerState) {
+            val filesDirRef = filesDir
+            val writeIoBlock = {
                 runCatching {
-                    filesDir.resolve(PERSISTENT_PLAYER_STATE_FILE).outputStream().use { fos ->
+                    filesDirRef.resolve(PERSISTENT_QUEUE_FILE).outputStream().use { fos ->
                         ObjectOutputStream(fos).use { oos ->
-                            oos.writeObject(persistPlayerState)
+                            oos.writeObject(persistQueue)
                         }
                     }
-                    lastSavedPlayerState = persistPlayerState
-                    Timber.tag(TAG).d("Player state saved successfully")
+                    Timber.tag(TAG).d("Queue saved successfully")
                 }.onFailure {
-                    Timber.tag(TAG).e(it, "Failed to save player state")
+                    Timber.tag(TAG).e(it, "Failed to save queue")
                     reportException(it)
+                }
+
+                runCatching {
+                    filesDirRef.resolve(PERSISTENT_AUTOMIX_FILE).outputStream().use { fos ->
+                        ObjectOutputStream(fos).use { oos ->
+                            oos.writeObject(persistAutomix)
+                        }
+                    }
+                    Timber.tag(TAG).d("Automix saved successfully")
+                }.onFailure {
+                    Timber.tag(TAG).e(it, "Failed to save automix")
+                    reportException(it)
+                }
+
+                // While paused nothing changes, so skip the periodic rewrite.
+                if (force || persistPlayerState != lastSavedPlayerState) {
+                    runCatching {
+                        filesDirRef.resolve(PERSISTENT_PLAYER_STATE_FILE).outputStream().use { fos ->
+                            ObjectOutputStream(fos).use { oos ->
+                                oos.writeObject(persistPlayerState)
+                            }
+                        }
+                        lastSavedPlayerState = persistPlayerState
+                        Timber.tag(TAG).d("Player state saved successfully")
+                    }.onFailure {
+                        Timber.tag(TAG).e(it, "Failed to save player state")
+                        reportException(it)
+                    }
+                }
+            }
+
+            if (force) {
+                writeIoBlock()
+            } else {
+                scope.launch(Dispatchers.IO) {
+                    writeIoBlock()
                 }
             }
         } catch (e: Exception) {
@@ -5120,7 +5141,7 @@ class MusicService :
                 // If already cached in memory or disk, skip prefetch
                 if (songUrlCache[nextMediaId] != null) return@launch
                 if (downloadCache.isCached(nextMediaId, 0, CHUNK_LENGTH)) return@launch
-                val usePlayerCache = dataStore.get(EnableSongCacheKey, true)
+                val usePlayerCache = cachedEnableSongCache
                 if (usePlayerCache && playerCache.isCached(nextMediaId, 0, CHUNK_LENGTH)) return@launch
 
                 Timber.tag(TAG).d("PREFETCHING STREAM for gapless playback: %s", nextMediaId)
