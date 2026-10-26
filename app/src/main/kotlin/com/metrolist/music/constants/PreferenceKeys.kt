@@ -466,11 +466,14 @@ enum class PlayerBackgroundStyle {
     DEFAULT,
     GRADIENT,
     BLUR,
+    ANIMATED_CANVAS,
 }
 
 val TopSize = stringPreferencesKey("topSize")
 val HistoryDuration = floatPreferencesKey("historyDuration")
 
+val AnimatedCanvasWifiOnlyKey = booleanPreferencesKey("animated_canvas_wifi_only")
+val AnimatedCanvasProceduralOnlyKey = booleanPreferencesKey("animated_canvas_procedural_only")
 val PlayerButtonsStyleKey = stringPreferencesKey("player_buttons_style")
 val PlayerBackgroundStyleKey = stringPreferencesKey("playerBackgroundStyle")
 val ShowLyricsKey = booleanPreferencesKey("showLyrics")

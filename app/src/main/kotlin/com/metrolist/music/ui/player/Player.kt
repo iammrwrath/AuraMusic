@@ -147,6 +147,8 @@ import com.metrolist.music.LocalDownloadUtil
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AnimatedCanvasProceduralOnlyKey
+import com.metrolist.music.constants.AnimatedCanvasWifiOnlyKey
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.CropAlbumArtKey
@@ -253,6 +255,14 @@ fun BottomSheetPlayer(
         key = PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.DEFAULT,
     )
+    val animatedCanvasWifiOnly by rememberPreference(
+        key = AnimatedCanvasWifiOnlyKey,
+        defaultValue = false,
+    )
+    val animatedCanvasProceduralOnly by rememberPreference(
+        key = AnimatedCanvasProceduralOnlyKey,
+        defaultValue = false,
+    )
     val playerButtonsStyle by rememberEnumPreference(
         key = PlayerButtonsStyleKey,
         defaultValue = PlayerButtonsStyle.DEFAULT,
@@ -273,7 +283,7 @@ fun BottomSheetPlayer(
     val shouldUseDarkButtonColors =
         remember(playerBackground, useDarkTheme) {
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> true
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> true
                 PlayerBackgroundStyle.DEFAULT -> useDarkTheme
             }
         }
@@ -288,7 +298,7 @@ fun BottomSheetPlayer(
             val insetsController = WindowCompat.getInsetsController(window, window.decorView)
 
             when (playerBackground) {
-                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> {
                     insetsController.isAppearanceLightStatusBars = false
                 }
 
@@ -508,8 +518,7 @@ fun BottomSheetPlayer(
         targetValue =
             when (playerBackground) {
                 PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.onBackground
-                PlayerBackgroundStyle.BLUR -> Color.White
-                PlayerBackgroundStyle.GRADIENT -> Color.White
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> Color.White
             },
         label = "TextBackgroundColor",
     )
@@ -518,8 +527,7 @@ fun BottomSheetPlayer(
         targetValue =
             when (playerBackground) {
                 PlayerBackgroundStyle.DEFAULT -> MaterialTheme.colorScheme.surface
-                PlayerBackgroundStyle.BLUR -> Color.Black
-                PlayerBackgroundStyle.GRADIENT -> Color.Black
+                PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> Color.Black
             },
         label = "icBackgroundColor",
     )
@@ -527,7 +535,8 @@ fun BottomSheetPlayer(
     val (textButtonColor, iconButtonColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(Color.White, Color.Black)
@@ -580,7 +589,8 @@ fun BottomSheetPlayer(
     val (sideButtonContainerColor, sideButtonContentColor) =
         when {
             playerBackground == PlayerBackgroundStyle.BLUR ||
-                playerBackground == PlayerBackgroundStyle.GRADIENT -> {
+                playerBackground == PlayerBackgroundStyle.GRADIENT ||
+                playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS -> {
                 when (playerButtonsStyle) {
                     PlayerButtonsStyle.DEFAULT -> {
                         Pair(
@@ -875,7 +885,7 @@ fun BottomSheetPlayer(
 
     val bottomSheetBackgroundColor =
         when (playerBackground) {
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> {
                 MaterialTheme.colorScheme.surfaceContainer
             }
 
@@ -968,6 +978,24 @@ fun BottomSheetPlayer(
                                         .background(Color.Black.copy(alpha = 0.2f)),
                                 )
                             }
+                        }
+                    }
+
+                    PlayerBackgroundStyle.ANIMATED_CANVAS -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .alpha(backgroundAlpha),
+                        ) {
+                            AmbientVideoCanvas(
+                                mediaId = mediaMetadata?.id,
+                                gradientColors = gradientColors,
+                                isPlaying = isPlaying,
+                                videoPlayerManager = videoPlayerManager,
+                                wifiOnly = animatedCanvasWifiOnly,
+                                proceduralOnly = animatedCanvasProceduralOnly,
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         }
                     }
 

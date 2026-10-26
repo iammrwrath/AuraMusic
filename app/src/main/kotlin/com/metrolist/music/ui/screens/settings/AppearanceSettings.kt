@@ -67,6 +67,8 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.LibraryFilter
+import com.metrolist.music.constants.AnimatedCanvasProceduralOnlyKey
+import com.metrolist.music.constants.AnimatedCanvasWifiOnlyKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
 import com.metrolist.music.constants.LyricsAnimationStyle
 import com.metrolist.music.constants.LyricsAnimationStyleKey
@@ -194,6 +196,16 @@ fun AppearanceSettings(
         rememberEnumPreference(
             PlayerBackgroundStyleKey,
             defaultValue = PlayerBackgroundStyle.DEFAULT,
+        )
+    val (animatedCanvasWifiOnly, onAnimatedCanvasWifiOnlyChange) =
+        rememberPreference(
+            AnimatedCanvasWifiOnlyKey,
+            defaultValue = false,
+        )
+    val (animatedCanvasProceduralOnly, onAnimatedCanvasProceduralOnlyChange) =
+        rememberPreference(
+            AnimatedCanvasProceduralOnlyKey,
+            defaultValue = false,
         )
 
     val (defaultOpenTab, onDefaultOpenTabChange) =
@@ -549,6 +561,7 @@ fun AppearanceSettings(
                     PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                    PlayerBackgroundStyle.ANIMATED_CANVAS -> stringResource(R.string.animated_canvas)
                 }
             },
         )
@@ -1098,7 +1111,7 @@ fun AppearanceSettings(
         Material3SettingsGroup(
             title = stringResource(R.string.player),
             items =
-                listOf(
+                listOfNotNull(
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.palette),
                         title = { Text(stringResource(R.string.new_player_design)) },
@@ -1129,11 +1142,64 @@ fun AppearanceSettings(
                                     PlayerBackgroundStyle.DEFAULT -> stringResource(R.string.follow_theme)
                                     PlayerBackgroundStyle.GRADIENT -> stringResource(R.string.gradient)
                                     PlayerBackgroundStyle.BLUR -> stringResource(R.string.player_background_blur)
+                                    PlayerBackgroundStyle.ANIMATED_CANVAS -> stringResource(R.string.animated_canvas)
                                 },
                             )
                         },
                         onClick = { showPlayerBackgroundDialog = true },
                     ),
+                    if (playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS) {
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.wifi_proxy),
+                            title = { Text(stringResource(R.string.animated_canvas_wifi_only)) },
+                            description = { Text(stringResource(R.string.animated_canvas_wifi_only_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = animatedCanvasWifiOnly,
+                                    onCheckedChange = onAnimatedCanvasWifiOnlyChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (animatedCanvasWifiOnly) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onAnimatedCanvasWifiOnlyChange(!animatedCanvasWifiOnly) },
+                        )
+                    } else {
+                        null
+                    },
+                    if (playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS) {
+                        Material3SettingsItem(
+                            icon = painterResource(R.drawable.palette),
+                            title = { Text(stringResource(R.string.animated_canvas_procedural_only)) },
+                            description = { Text(stringResource(R.string.animated_canvas_procedural_only_desc)) },
+                            trailingContent = {
+                                Switch(
+                                    checked = animatedCanvasProceduralOnly,
+                                    onCheckedChange = onAnimatedCanvasProceduralOnlyChange,
+                                    thumbContent = {
+                                        Icon(
+                                            painter =
+                                                painterResource(
+                                                    id = if (animatedCanvasProceduralOnly) R.drawable.check else R.drawable.close,
+                                                ),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(SwitchDefaults.IconSize),
+                                        )
+                                    },
+                                )
+                            },
+                            onClick = { onAnimatedCanvasProceduralOnlyChange(!animatedCanvasProceduralOnly) },
+                        )
+                    } else {
+                        null
+                    },
                     Material3SettingsItem(
                         icon = painterResource(R.drawable.hide_image),
                         title = { Text(stringResource(R.string.hide_player_thumbnail)) },

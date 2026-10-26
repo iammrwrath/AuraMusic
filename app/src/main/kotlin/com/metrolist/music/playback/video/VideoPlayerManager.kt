@@ -394,6 +394,57 @@ class VideoPlayerManager(
         }
     }
 
+    fun getCachedPlaybackData(mediaId: String): InnerTubeXPlayer.PlaybackData? {
+        val targetId = songToMusicVideoCache.get(mediaId) ?: mediaId
+        return videoStreamCache.get(targetId) ?: videoStreamCache.get(mediaId)
+    }
+
+    suspend fun resolveStreamData(mediaId: String): InnerTubeXPlayer.PlaybackData? {
+        val cached = getCachedPlaybackData(mediaId)
+        if (cached?.videoUrl != null) return cached
+
+        return withContext(Dispatchers.IO) {
+            try {
+                val song = database.songEntity(mediaId)
+                val targetVideoId = songToMusicVideoCache.get(mediaId) ?: run {
+                    val resolved = resolveMusicVideoId(mediaId, song?.title, null, song?.duration)
+                    resolved ?: mediaId
+                }
+                songToMusicVideoCache.put(mediaId, targetVideoId)
+
+                val audioQuality = audioQualityProvider()
+                val contentHints = ContentHints(
+                    isExplicit = song?.explicit,
+                    isUploaded = song?.isUploaded,
+                )
+                var result = InnerTubeXPlayer.videoStreamForPlayback(
+                    videoId = targetVideoId,
+                    audioQuality = audioQuality,
+                    connectivityManager = connectivityManager,
+                    contentHints = contentHints,
+                )
+                var data = result.getOrNull()
+                if (data?.videoUrl == null && targetVideoId != mediaId) {
+                    result = InnerTubeXPlayer.videoStreamForPlayback(
+                        videoId = mediaId,
+                        audioQuality = audioQuality,
+                        connectivityManager = connectivityManager,
+                        contentHints = contentHints,
+                    )
+                    data = result.getOrNull()
+                }
+                if (data?.videoUrl != null) {
+                    videoStreamCache.put(mediaId, data)
+                    videoStreamCache.put(targetVideoId, data)
+                }
+                data
+            } catch (e: Exception) {
+                Timber.tag(TAG).w(e, "resolveStreamData failed for $mediaId")
+                null
+            }
+        }
+    }
+
     fun setVideoMode(enabled: Boolean) {
         runOnMain {
             if (_isVideoMode.value == enabled) return@runOnMain

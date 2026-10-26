@@ -428,8 +428,8 @@ fun OriginalLyrics(
                 MaterialTheme.colorScheme.primary
             }
 
-            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT -> {
-                // For blur/gradient backgrounds, always use light colors regardless of theme
+            PlayerBackgroundStyle.BLUR, PlayerBackgroundStyle.GRADIENT, PlayerBackgroundStyle.ANIMATED_CANVAS -> {
+                // For blur/gradient/animated canvas backgrounds, always use light colors regardless of theme
                 Color.White
             }
         }
