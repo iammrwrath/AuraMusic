@@ -43,8 +43,23 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
     ReleaseInfo(
         tagName = BuildConfig.VERSION_NAME,
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
-        releaseDate = "2026-09-07",
+        releaseDate = "2026-10-27",
         description = """
+## 🎨 AuraMusic v13.8.39 - Native Animated Canvas & Core Performance Engine
+
+### ✨ New Features & Visuals
+- **Native Animated Cover Art & Canvas Engine**: Built our own in-house motion canvas engine with zero Spotify dependencies!
+  - **Ambient Video Looper**: Full-bleed 9:16 vertical looping visualizers and duration-aligned music videos running muted under floating player controls and lyrics.
+  - **Procedural Generative Motion Canvas**: Multi-layered aurora mesh gradients and breathing ambient light bodies generated dynamically from album palette colors (0 network bandwidth, highly optimized GPU rendering).
+  - **Smart Data Saver Preferences**: Configure Animated Canvas under **Settings > Appearance > Player** with options for *Wi-Fi Only* and *Generative Motion Art Only*.
+
+### ⚡ Performance & Engine Refinements
+- **Non-Blocking Background State Persistence**: Offloaded queue, automix, and player state serialization to `Dispatchers.IO`, eliminating UI micro-stutters during playback transitions and periodic state saves.
+- **In-Memory Format & ContentLength Caching**: Added an in-memory `LruCache` for format lengths and cached song cache preferences, bypassing redundant SQLite/Room queries on every media chunk resolution.
+- **Hoisted HomeScreen Grid States**: Hoisted `keepListeningLazyGridState` using `rememberLazyGridState()` to prevent list recreation and frame drops during fast flings.
+
+---
+
 ## ⚡ AuraMusic v13.8.0 - Multi-Device Performance & Fluidity (Minor Release)
 
 ### 🚀 Performance & Fluidity
