@@ -22,7 +22,7 @@
 ---
 
 > [!NOTE]
-> ### 🚀 Version 13.8.39 Released!
+> ### 🚀 Version 13.8.40 Released!
 > AuraMusic is now fully cross-platform with official support for **Android** and **Desktop (Windows, macOS, Linux)**, featuring the iconic **Nothing OS 5 Dot Matrix & Geist Typography** mode, **M3U playlist importing**, **Direct YouTube Music login**, and **seamless Automix transitions**.
 
 ---

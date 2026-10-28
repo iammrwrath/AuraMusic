@@ -35,11 +35,24 @@ import com.metrolist.music.BuildConfig
 import com.metrolist.music.utils.ReleaseInfo
 import com.metrolist.music.utils.ReleaseAsset
 import com.metrolist.music.utils.Updater
+import com.metrolist.music.ui.component.AnimatedBottomSheet
 
 private val markdownInlineRegex = Regex("(\\*\\*(.+?)\\*\\*)|(@[a-zA-Z0-9_-]+)|(https?://[\\w-]+(\\.[\\w-]+)+[\\w.,@?^=%&:/~+#-]*)")
 
 /** Built-in static changelog shown when GitHub releases haven't been published yet. */
 private val AURAMUSIC_STATIC_CHANGELOG = listOf(
+    ReleaseInfo(
+        tagName = BuildConfig.VERSION_NAME,
+        versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
+        releaseDate = "2026-10-27",
+        description = """
+## 🐛 AuraMusic v13.8.40 - Touch & Interaction Hotfix
+
+### 🛠️ Bug Fixes & Stability
+- **Resolved Unresponsive UI Freeze**: Fixed an issue where launching the app after an update displayed an invisible modal scrim that blocked all touch clicks and scrolling.
+""".trimIndent(),
+        assets = emptyList()
+    ),
     ReleaseInfo(
         tagName = BuildConfig.VERSION_NAME,
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
@@ -186,7 +199,8 @@ fun ChangelogScreen(
         derivedStateOf { sheetState.targetValue != SheetValue.Hidden }
     }
 
-    ModalBottomSheet(
+    AnimatedBottomSheet(
+        isVisible = true,
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
