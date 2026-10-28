@@ -982,20 +982,24 @@ fun BottomSheetPlayer(
                     }
 
                     PlayerBackgroundStyle.ANIMATED_CANVAS -> {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .alpha(backgroundAlpha),
-                        ) {
-                            AmbientVideoCanvas(
-                                mediaId = mediaMetadata?.id,
-                                gradientColors = gradientColors,
-                                isPlaying = isPlaying,
-                                videoPlayerManager = videoPlayerManager,
-                                wifiOnly = animatedCanvasWifiOnly,
-                                proceduralOnly = animatedCanvasProceduralOnly,
-                                modifier = Modifier.fillMaxSize(),
-                            )
+                        // Only compose (and spin up ExoPlayer + infinite animations) while the
+                        // player is actually expanded, so it never runs behind the mini player.
+                        if (state.isExpanded) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .alpha(backgroundAlpha),
+                            ) {
+                                AmbientVideoCanvas(
+                                    mediaId = mediaMetadata?.id,
+                                    gradientColors = gradientColors,
+                                    isPlaying = isPlaying,
+                                    videoPlayerManager = videoPlayerManager,
+                                    wifiOnly = animatedCanvasWifiOnly,
+                                    proceduralOnly = animatedCanvasProceduralOnly,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
                         }
                     }
 
