@@ -92,14 +92,14 @@
 | Package | Format | Compatibility | Download |
 | :--- | :--- | :--- | :--- |
 | **AuraMusic Universal** | `.apk` | Android 8.0+ (`arm64-v8a`, `armeabi-v7a`, `x86_64`) | [⬇️ Download AuraMusic.apk](https://github.com/iammrwrath/AuraMusic/releases/latest/download/AuraMusic.apk) |
-| **AuraMusic v13.8.39** | `.apk` | Specific Release Version | [⬇️ Download v13.8.39](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.39/AuraMusic-v13.8.39.apk) |
+| **AuraMusic v13.8.40** | `.apk` | Specific Release Version | [⬇️ Download v13.8.40](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.40/AuraMusic-v13.8.40.apk) |
 
 <br/>
 
 ### Desktop (Windows / macOS / Linux)
 | Platform | Package | Description | Download |
 | :--- | :--- | :--- | :--- |
-| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.39/AuraMusic-Desktop.jar) |
+| **Universal Desktop** | Standalone `.jar` | Cross-platform executable JAR (requires Java 21+) | [⬇️ Download Desktop.jar](https://github.com/iammrwrath/AuraMusic/releases/download/v13.8.40/AuraMusic-Desktop.jar) |
 
 </div>
 
