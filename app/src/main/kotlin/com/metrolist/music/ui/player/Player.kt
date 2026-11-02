@@ -982,25 +982,8 @@ fun BottomSheetPlayer(
                     }
 
                     PlayerBackgroundStyle.ANIMATED_CANVAS -> {
-                        // Only compose (and spin up ExoPlayer + infinite animations) while the
-                        // player is actually expanded, so it never runs behind the mini player.
-                        if (state.isExpanded) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .alpha(backgroundAlpha),
-                            ) {
-                                AmbientVideoCanvas(
-                                    mediaId = mediaMetadata?.id,
-                                    gradientColors = gradientColors,
-                                    isPlaying = isPlaying,
-                                    videoPlayerManager = videoPlayerManager,
-                                    wifiOnly = animatedCanvasWifiOnly,
-                                    proceduralOnly = animatedCanvasProceduralOnly,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
-                        }
+                        // Legacy style retained for backwards compatibility with saved preferences:
+                        // Player background falls back to Default surface so album art can animate cleanly.
                     }
 
                     else -> {
@@ -2216,6 +2199,7 @@ fun BottomSheetPlayer(
                                         isPlayerExpanded = isExpandedProvider,
                                         isLandscape = true,
                                         isListenTogetherGuest = isListenTogetherGuest,
+                                        gradientColors = gradientColors,
                                     )
                                 }
                             }
@@ -2354,6 +2338,7 @@ fun BottomSheetPlayer(
                                         modifier = Modifier.nestedScroll(state.preUpPostDownNestedScrollConnection),
                                         isPlayerExpanded = isExpandedProvider,
                                         isListenTogetherGuest = isListenTogetherGuest,
+                                        gradientColors = gradientColors,
                                     )
                                 }
                             }

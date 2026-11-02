@@ -67,6 +67,7 @@ import com.metrolist.music.constants.GridItemsSizeKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.HideStatusBarOnFullscreenKey
 import com.metrolist.music.constants.LibraryFilter
+import com.metrolist.music.constants.AnimatedCoverArtKey
 import com.metrolist.music.constants.AnimatedCanvasProceduralOnlyKey
 import com.metrolist.music.constants.AnimatedCanvasWifiOnlyKey
 import com.metrolist.music.constants.ListenTogetherInTopBarKey
@@ -191,6 +192,11 @@ fun AppearanceSettings(
         rememberPreference(
             CropAlbumArtKey,
             defaultValue = false,
+        )
+    val (animatedCoverArt, onAnimatedCoverArtChange) =
+        rememberPreference(
+            AnimatedCoverArtKey,
+            defaultValue = true,
         )
     val (playerBackground, onPlayerBackgroundChange) =
         rememberEnumPreference(
@@ -332,7 +338,8 @@ fun AppearanceSettings(
 
     val availableBackgroundStyles =
         PlayerBackgroundStyle.entries.filter {
-            it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            it != PlayerBackgroundStyle.ANIMATED_CANVAS &&
+            (it != PlayerBackgroundStyle.BLUR || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         }
 
     val (defaultChip, onDefaultChipChange) =
@@ -1148,7 +1155,29 @@ fun AppearanceSettings(
                         },
                         onClick = { showPlayerBackgroundDialog = true },
                     ),
-                    if (playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS) {
+                    Material3SettingsItem(
+                        icon = painterResource(R.drawable.slow_motion_video),
+                        title = { Text(stringResource(R.string.animated_cover_art)) },
+                        description = { Text(stringResource(R.string.animated_cover_art_desc)) },
+                        trailingContent = {
+                            Switch(
+                                checked = animatedCoverArt,
+                                onCheckedChange = onAnimatedCoverArtChange,
+                                thumbContent = {
+                                    Icon(
+                                        painter =
+                                            painterResource(
+                                                id = if (animatedCoverArt) R.drawable.check else R.drawable.close,
+                                            ),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                },
+                            )
+                        },
+                        onClick = { onAnimatedCoverArtChange(!animatedCoverArt) },
+                    ),
+                    if (animatedCoverArt) {
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.wifi_proxy),
                             title = { Text(stringResource(R.string.animated_canvas_wifi_only)) },
@@ -1174,7 +1203,7 @@ fun AppearanceSettings(
                     } else {
                         null
                     },
-                    if (playerBackground == PlayerBackgroundStyle.ANIMATED_CANVAS) {
+                    if (animatedCoverArt) {
                         Material3SettingsItem(
                             icon = painterResource(R.drawable.palette),
                             title = { Text(stringResource(R.string.animated_canvas_procedural_only)) },

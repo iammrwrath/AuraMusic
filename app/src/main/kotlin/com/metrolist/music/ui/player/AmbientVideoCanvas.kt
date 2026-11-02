@@ -55,8 +55,7 @@ private fun isWifiConnected(context: Context): Boolean {
 /**
  * Ambient video canvas component:
  * Plays the official YouTube/InnerTube visualizer or music video on a muted, seamless loop
- * cropped to fill 9:16 vertical view (RESIZE_MODE_ZOOM), with a subtle dark gradient scrim
- * for crystal clear readability of floating controls, marquee text, and lyrics.
+ * cropped to fill (RESIZE_MODE_ZOOM).
  *
  * Automatically falls back to [GenerativeMotionCanvas] when:
  * 1. Procedural-only mode is toggled ON in preferences.
@@ -72,6 +71,7 @@ fun AmbientVideoCanvas(
     videoPlayerManager: VideoPlayerManager,
     wifiOnly: Boolean = false,
     proceduralOnly: Boolean = false,
+    showScrim: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -210,18 +210,20 @@ fun AmbientVideoCanvas(
             }
         }
 
-        // Overlay scrim: Smooth top & bottom vignette to guarantee pristine text, lyrics, and button contrast
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        0.0f to Color.Black.copy(alpha = 0.55f),
-                        0.35f to Color.Black.copy(alpha = 0.20f),
-                        0.70f to Color.Black.copy(alpha = 0.45f),
-                        1.0f to Color.Black.copy(alpha = 0.75f),
+        // Overlay scrim: Smooth top & bottom vignette for text contrast (only when showScrim is true)
+        if (showScrim) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Black.copy(alpha = 0.55f),
+                            0.35f to Color.Black.copy(alpha = 0.20f),
+                            0.70f to Color.Black.copy(alpha = 0.45f),
+                            1.0f to Color.Black.copy(alpha = 0.75f),
+                        ),
                     ),
-                ),
-        )
+            )
+        }
     }
 }

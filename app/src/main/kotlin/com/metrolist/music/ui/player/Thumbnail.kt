@@ -73,6 +73,9 @@ import coil3.request.ImageRequest
 import com.metrolist.music.LocalListenTogetherManager
 import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
+import com.metrolist.music.constants.AnimatedCoverArtKey
+import com.metrolist.music.constants.AnimatedCanvasProceduralOnlyKey
+import com.metrolist.music.constants.AnimatedCanvasWifiOnlyKey
 import com.metrolist.music.constants.CropAlbumArtKey
 import com.metrolist.music.constants.HidePlayerThumbnailKey
 import com.metrolist.music.constants.PlayerBackgroundStyle
@@ -82,6 +85,7 @@ import com.metrolist.music.constants.SeekExtraSeconds
 import com.metrolist.music.constants.SwipeThumbnailKey
 import com.metrolist.music.constants.ThumbnailCornerRadius
 import com.metrolist.music.listentogether.RoomRole
+import com.metrolist.music.playback.VideoPlayerManager
 import com.metrolist.music.ui.component.CastButton
 import com.metrolist.music.utils.rememberEnumPreference
 import com.metrolist.music.utils.rememberPreference
@@ -201,6 +205,7 @@ fun Thumbnail(
     isPlayerExpanded: () -> Boolean = { true },
     isLandscape: Boolean = false,
     isListenTogetherGuest: Boolean = false,
+    gradientColors: List<Color> = emptyList(),
 ) {
     val playerConnection = LocalPlayerConnection.current ?: return
     val context = LocalContext.current
@@ -219,6 +224,10 @@ fun Thumbnail(
     val swipeThumbnail = swipeThumbnailPref && !isListenTogetherGuest
     val hidePlayerThumbnail by rememberPreference(HidePlayerThumbnailKey, false)
     val cropAlbumArt by rememberPreference(CropAlbumArtKey, false)
+    val animatedCoverArt by rememberPreference(AnimatedCoverArtKey, true)
+    val animatedCanvasWifiOnly by rememberPreference(AnimatedCanvasWifiOnlyKey, false)
+    val animatedCanvasProceduralOnly by rememberPreference(AnimatedCanvasProceduralOnlyKey, false)
+    val isPlaying by playerConnection.isPlaying.collectAsState()
     val playerBackground by rememberEnumPreference(
         key = PlayerBackgroundStyleKey,
         defaultValue = PlayerBackgroundStyle.DEFAULT
@@ -400,7 +409,14 @@ fun Thumbnail(
                                 isLandscape = isLandscape,
                                 isListenTogetherGuest = isListenTogetherGuest,
                                 currentMediaId = mediaMetadata?.id,
-                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl
+                                currentMediaThumbnail = mediaMetadata?.thumbnailUrl,
+                                animatedCoverArt = animatedCoverArt,
+                                animatedCanvasWifiOnly = animatedCanvasWifiOnly,
+                                animatedCanvasProceduralOnly = animatedCanvasProceduralOnly,
+                                gradientColors = gradientColors,
+                                isPlayerExpanded = isPlayerExpanded,
+                                isPlaying = isPlaying,
+                                videoPlayerManager = playerConnection.videoPlayerManager,
                             )
                         }
                     }
@@ -499,6 +515,13 @@ private fun ThumbnailItem(
     isListenTogetherGuest: Boolean = false,
     currentMediaId: String? = null,
     currentMediaThumbnail: String? = null,
+    animatedCoverArt: Boolean = false,
+    animatedCanvasWifiOnly: Boolean = false,
+    animatedCanvasProceduralOnly: Boolean = false,
+    gradientColors: List<Color> = emptyList(),
+    isPlayerExpanded: () -> Boolean = { true },
+    isPlaying: Boolean = false,
+    videoPlayerManager: VideoPlayerManager? = null,
     modifier: Modifier = Modifier,
 ) {
     val incrementalSeekSkipEnabled by rememberPreference(SeekExtraSeconds, defaultValue = false)
@@ -568,10 +591,29 @@ private fun ThumbnailItem(
                     item.mediaMetadata.artworkUri?.toString()
                 }
 
-                ThumbnailImage(
-                    artworkUri = artworkUriToUse,
-                    cropArtwork = cropAlbumArt
-                )
+                val showAnimatedCover = animatedCoverArt &&
+                    item.mediaId == currentMediaId &&
+                    !currentMediaId.isNullOrBlank() &&
+                    isPlayerExpanded() &&
+                    videoPlayerManager != null
+
+                if (showAnimatedCover) {
+                    AmbientVideoCanvas(
+                        mediaId = currentMediaId,
+                        gradientColors = gradientColors,
+                        isPlaying = isPlaying,
+                        videoPlayerManager = videoPlayerManager!!,
+                        wifiOnly = animatedCanvasWifiOnly,
+                        proceduralOnly = animatedCanvasProceduralOnly,
+                        showScrim = false,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    ThumbnailImage(
+                        artworkUri = artworkUriToUse,
+                        cropArtwork = cropAlbumArt
+                    )
+                }
             }
             
             // Cast button at top-right corner of thumbnail

@@ -998,6 +998,9 @@
     <string name="stream_source_web_creator">WEB_CREATOR</string>
     <string name="stream_source_web_creator_desc">Creator web client.</string>
 
+    <!-- Animated Cover Art (Spotify Canvas) -->
+    <string name="animated_cover_art">Animated cover art</string>
+    <string name="animated_cover_art_desc">Play looping video canvas and motion art inside album art like Spotify</string>
     <!-- Animated Canvas -->
     <string name="animated_canvas">Animated Canvas</string>
     <string name="animated_canvas_wifi_only">Animated Canvas only on Wi-Fi</string>
