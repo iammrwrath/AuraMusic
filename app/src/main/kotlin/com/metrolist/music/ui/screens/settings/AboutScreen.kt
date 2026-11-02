@@ -456,10 +456,16 @@ fun AboutScreen(
 
         Spacer(Modifier.height(32.dp))
 
-        // Troubleshooting & AI Diagnostics
+        // App Updates & Diagnostics
         Material3SettingsGroup(
-            title = "Troubleshooting & AI Diagnostics",
+            title = stringResource(R.string.updates_and_diagnostics),
             items = listOf(
+                Material3SettingsItem(
+                    icon = painterResource(R.drawable.update),
+                    title = { Text(stringResource(R.string.updater), fontWeight = FontWeight.SemiBold) },
+                    description = { Text(stringResource(R.string.settings_desc_updater)) },
+                    onClick = { navController.navigate("settings/updater") }
+                ),
                 Material3SettingsItem(
                     icon = painterResource(R.drawable.github),
                     title = { Text("Report Issue (AI Auto-Fix & Release)", fontWeight = FontWeight.SemiBold) },

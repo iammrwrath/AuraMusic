@@ -290,10 +290,10 @@
     <string name="audio_quality_auto_detail">Dynamically balances audio fidelity and mobile data usage</string>
     <string name="audio_quality_low_detail">Conserves mobile data on metered and slow networks</string>
     <string name="gapless_playback">Gapless Playback</string>
-    <string name="gapless_playback_desc">Eliminates silence between consecutive tracks for seamless album and live recording listening</string>
+    <string name="gapless_playback_desc">Eliminates silence between consecutive tracks</string>
     <!-- Settings Hub subtitles -->
     <string name="settings_desc_player">Quality, transitions and audio</string>
-    <string name="settings_desc_appearance">Themes, player and lyrics style</string>
+    <string name="settings_desc_appearance">Themes, player and layout style</string>
     <string name="settings_desc_content">Language, region and filters</string>
     <string name="settings_desc_ai">AI-powered lyric translation</string>
     <string name="settings_desc_android_auto">Car display and voice controls</string>
@@ -301,12 +301,12 @@
     <string name="settings_desc_backup">Export or import your data</string>
     <string name="settings_desc_privacy">History and permissions</string>
     <string name="settings_desc_updater">App updates and release notes</string>
-    <string name="settings_desc_about">Version, licenses and GitHub</string>
+    <string name="settings_desc_about">Updates, diagnostics, credits and info</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
     <string name="auto_load_more">Auto load more songs</string>
-    <string name="auto_load_more_desc">Automatically add more songs when the end of the queue is reached, if possible</string>
+    <string name="auto_load_more_desc">Automatically add more songs when the queue ends</string>
     <string name="skip_silence">Skip silence</string>
     <string name="audio_normalization">Audio normalization</string>
     <string name="auto_skip_next_on_error">Auto skip to next song when error occurs</string>
@@ -337,9 +337,9 @@
     <string name="clear_search_history">Clear search history</string>
     <string name="clear_search_history_confirm">Are you sure you want to clear all search history?</string>
     <string name="use_login_for_browse">Use login for browsing content</string>
-    <string name="use_login_for_browse_desc">This can influence what content you see and for example shows premium-only albums if you are logged in with a Premium account</string>
+    <string name="use_login_for_browse_desc">Show personalized and account-specific browse content</string>
     <string name="disable_screenshot">Disable screenshot</string>
-    <string name="disable_screenshot_desc">When this option is on, screenshots and the app\'s view in Recents are disabled.</string>
+    <string name="disable_screenshot_desc">Block screenshots and hide app preview in Recents</string>
     <string name="enable_lrclib">Enable LrcLib lyrics provider</string>
     <string name="enable_kugou">Enable KuGou lyrics provider</string>
     <string name="hide_explicit">Hide explicit content</string>
@@ -388,7 +388,7 @@
     <string name="car_lyrics_on">Lyrics: ON</string>
     <string name="car_lyrics_off">Lyrics: OFF</string>
     <string name="volume_boost">Volume Boost (Preamp)</string>
-    <string name="volume_boost_desc">Amplifies audio output for car stereos, Android Auto, and quiet head units. Includes soft-knee anti-clipping limiter.</string>
+    <string name="volume_boost_desc">Amplifies output for car stereos with anti-clipping protection</string>
     <string name="volume_boost_disabled">Off (0.0 dB)</string>
     <string name="volume_boost_db">+%1$.1f dB</string>
     <string name="added_to_playlist">Added to %1$s</string>
@@ -416,4 +416,9 @@
     <string name="player_group_transitions">Transitions</string>
     <string name="player_group_audio">Audio</string>
     <string name="appearance_group_library">Library &amp; layout</string>
+    <string name="settings_desc_lyrics">Display style, sources, romanization and AI translation</string>
+    <string name="lyrics_group_sources_translation">Sources &amp; translation</string>
+    <string name="lyrics_romanization_desc">Romanize non-Latin scripts line by line</string>
+    <string name="about_and_updates">About &amp; updates</string>
+    <string name="updates_and_diagnostics">Updates &amp; diagnostics</string>
 </resources>

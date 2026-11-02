@@ -125,10 +125,10 @@ fun SettingsScreen(
                     onClick = { navController.navigate("settings/content") }
                 ),
                 Material3SettingsItem(
-                    icon = painterResource(R.drawable.translate),
-                    title = { Text(stringResource(R.string.ai_lyrics_translation)) },
-                    description = { Text(stringResource(R.string.settings_desc_ai)) },
-                    onClick = { navController.navigate("settings/ai") }
+                    icon = painterResource(R.drawable.lyrics),
+                    title = { Text(stringResource(R.string.lyrics)) },
+                    description = { Text(stringResource(R.string.settings_desc_lyrics)) },
+                    onClick = { navController.navigate("settings/lyrics") }
                 )
             )
         )
@@ -212,32 +212,8 @@ fun SettingsScreen(
                 }
                 add(
                     Material3SettingsItem(
-                        icon = painterResource(R.drawable.update),
-                        title = { Text(stringResource(R.string.updater)) },
-                        description = { Text(stringResource(R.string.settings_desc_updater)) },
-                        onClick = { navController.navigate("settings/updater") }
-                    )
-                )
-                add(
-                    Material3SettingsItem(
-                        icon = painterResource(R.drawable.github),
-                        title = { Text(stringResource(R.string.report_issue_ai)) },
-                        description = { Text(stringResource(R.string.report_issue_ai_desc)) },
-                        onClick = {
-                            val report = com.metrolist.music.utils.FlightRecorder.buildDiagnosticReport(context)
-                            val url = com.metrolist.music.utils.FlightRecorder.getGitHubIssueUrl(
-                                title = "[Bug] Diagnostic Report (${android.os.Build.MODEL})",
-                                body = report,
-                                labels = listOf("ai-fix", "bug")
-                            )
-                            uriHandler.openUri(url)
-                        }
-                    )
-                )
-                add(
-                    Material3SettingsItem(
                         icon = painterResource(R.drawable.info),
-                        title = { Text(stringResource(R.string.about)) },
+                        title = { Text(stringResource(R.string.about_and_updates)) },
                         description = { Text(stringResource(R.string.settings_desc_about)) },
                         onClick = { navController.navigate("settings/about") }
                     )
