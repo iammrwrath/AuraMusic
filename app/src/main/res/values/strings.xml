@@ -292,16 +292,16 @@
     <string name="gapless_playback">Gapless Playback</string>
     <string name="gapless_playback_desc">Eliminates silence between consecutive tracks for seamless album and live recording listening</string>
     <!-- Settings Hub subtitles -->
-    <string name="settings_desc_player">High bitrate, gapless playback, crossfade, and equalizer</string>
-    <string name="settings_desc_appearance">Themes, Nothing OS Dot Matrix, and player UI style</string>
-    <string name="settings_desc_content">Language, country, explicit content, and discovery</string>
-    <string name="settings_desc_ai">AI-powered romanization and synchronized translations</string>
-    <string name="settings_desc_android_auto">Car display, voice search, and driving controls</string>
-    <string name="settings_desc_storage">Cache size, offline downloads, and storage optimization</string>
-    <string name="settings_desc_backup">Export or import playlists, settings, and library data</string>
-    <string name="settings_desc_privacy">Playback history, data logging, and permissions</string>
-    <string name="settings_desc_updater">Check for app updates and view release notes</string>
-    <string name="settings_desc_about">Version info, open-source licenses, and GitHub</string>
+    <string name="settings_desc_player">Quality, transitions and audio</string>
+    <string name="settings_desc_appearance">Themes, player and lyrics style</string>
+    <string name="settings_desc_content">Language, region and filters</string>
+    <string name="settings_desc_ai">AI-powered lyric translation</string>
+    <string name="settings_desc_android_auto">Car display and voice controls</string>
+    <string name="settings_desc_storage">Cache and downloads</string>
+    <string name="settings_desc_backup">Export or import your data</string>
+    <string name="settings_desc_privacy">History and permissions</string>
+    <string name="settings_desc_updater">App updates and release notes</string>
+    <string name="settings_desc_about">Version, licenses and GitHub</string>
     <string name="queue">Queue</string>
     <string name="persistent_queue">Persistent queue</string>
     <string name="persistent_queue_desc">Restore your last queue when the app starts</string>
@@ -412,4 +412,8 @@
     <string name="report_issue_ai_desc">Capture playback logs and open AI auto-fix report</string>
     <string name="preset_vinyl_title">Vinyl Warmth &amp; Air</string>
     <string name="preset_flac_title">Crisp Studio / FLAC Clarity</string>
+    <string name="player_group_playback">Playback</string>
+    <string name="player_group_transitions">Transitions</string>
+    <string name="player_group_audio">Audio</string>
+    <string name="appearance_group_library">Library &amp; layout</string>
 </resources>

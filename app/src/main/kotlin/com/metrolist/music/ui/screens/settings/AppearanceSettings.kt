@@ -1647,7 +1647,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         Material3SettingsGroup(
-            title = stringResource(R.string.misc),
+            title = stringResource(R.string.appearance_group_library),
             items =
                 listOf(
                     Material3SettingsItem(
