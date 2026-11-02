@@ -440,7 +440,7 @@ fun PlayerSettings(
                     ))
                     if (automixMode == AutomixMode.NEURALMIX_FX) {
                         add(Material3SettingsItem(
-                            icon = painterResource(R.drawable.graphic_eq),
+                            icon = painterResource(R.drawable.tune),
                             title = { Text(stringResource(R.string.neuralmix_style)) },
                             description = {
                                 Text(
@@ -457,7 +457,7 @@ fun PlayerSettings(
                     }
                     if (automixMode == AutomixMode.SMART_AUTOMIX) {
                         add(Material3SettingsItem(
-                            icon = painterResource(R.drawable.graphic_eq),
+                            icon = painterResource(R.drawable.volume_up),
                             title = { Text(stringResource(R.string.automix_bass_swap)) },
                             description = { Text(stringResource(R.string.automix_bass_swap_desc)) },
                             trailingContent = {
@@ -650,7 +650,7 @@ fun PlayerSettings(
                 ))
                 val isTransitionActive = automixMode != AutomixMode.OFF || crossfadeEnabled
                 add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
+                    icon = painterResource(R.drawable.music_note),
                     title = { Text(stringResource(R.string.audio_offload)) },
                     description = {
                         Text(
@@ -677,7 +677,7 @@ fun PlayerSettings(
                     onClick = { if (!isTransitionActive) onAudioOffloadChange(!audioOffload) }
                 ))
                 add(Material3SettingsItem(
-                    icon = painterResource(R.drawable.graphic_eq),
+                    icon = painterResource(R.drawable.slow_motion_video),
                     title = { Text(stringResource(R.string.varispeed)) },
                     description = {
                         Text(
