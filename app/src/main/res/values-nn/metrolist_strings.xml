@@ -258,7 +258,6 @@
     <string name="equalizer_header">Ljodutjemnar</string>
     <string name="no_profiles">Ingen ljodutjemnarprofilar</string>
     <string name="import_profile">Importer profil</string>
-    <string name="system_equalizer">Systemljodutjemnar</string>
     <string name="eq_disabled">Slegen av</string>
     <plurals name="band_count">
         <item quantity="one">%d band</item>

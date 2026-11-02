@@ -543,7 +543,6 @@
     <string name="equalizer_header">Hangszínszabályzó</string>
     <string name="no_profiles">Nincs hangszínszabályzó profil</string>
     <string name="import_profile">Profil importálása</string>
-    <string name="system_equalizer">Rendszer hangszínszabályzója</string>
     <string name="eq_disabled">Kikapcsolva</string>
     <plurals name="band_count">
         <item quantity="one">%d sáv</item>
@@ -757,7 +756,6 @@
     <string name="varispeed">Varispeed bekapcsolása</string>
     <string name="varispeed_description">Hasonlóan a bakelit lassításánál, a zene sebesség lassítása hangszín változással is fog járni</string>
     <string name="lyrics_animation_style_title">Szavankénti animáció stílus</string>
-    <string name="system_equalizer_desc">Az Android beépített hangszínszabályzójának megnyitása</string>
     <string name="eq_wizard">AutoEQ Varázsló</string>
     <string name="eq_download_db">AutoEQ adatbázis letöltése (17 MB)</string>
     <string name="eq_downloading">Letöltés…</string>

@@ -260,7 +260,6 @@
     </plurals>
     <string name="wavy">波浪</string>
     <string name="pause_music_when_media_is_muted">在静音时暂停播放</string>
-    <string name="system_equalizer">系统均衡器</string>
     <string name="album_art">专辑封面</string>
     <string name="no_song_playing">没有音乐正在播放</string>
     <string name="tap_to_open">点击打开 AuraMusic</string>
@@ -759,7 +758,6 @@
     <string name="varispeed_description">将音高与播放速度关联，产生磁带式的加速和减速效果</string>
     <string name="autoplay">自动播放</string>
     <string name="autoplay_desc">当前歌曲播放结束后，自动播放下一首歌曲</string>
-    <string name="system_equalizer_desc">打开 Android 内置的均衡器</string>
     <string name="eq_wizard">AutoEQ 向导</string>
     <string name="eq_download_db">下载 AutoEQ 数据库（17 MB）</string>
     <string name="eq_downloading">正在下载…</string>

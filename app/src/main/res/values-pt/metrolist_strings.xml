@@ -281,7 +281,6 @@
     <string name="remember_shuffle_and_repeat">Lembrar modo aleatório e repetir</string>
     <string name="remember_shuffle_and_repeat_desc">Manter modo aleatório e modo repetir quando a aplicação reiniciar</string>
     <string name="keep_screen_on_when_player_is_expanded">Manter ecrã ligado quando o reprodutor estiver expandido</string>
-    <string name="system_equalizer">Equalizador do Sistema</string>
     <string name="error_title">Erro</string>
     <string name="error_playback_failed">Erro na reprodução</string>
     <string name="album_art">Arte do álbum</string>
@@ -428,7 +427,6 @@
     <string name="hide_youtube_shorts">Esconder YouTube Shorts</string>
     <string name="transparent">Transparente</string>
     <string name="lyrics_animation_style_title">Estilo de animação palavra-por-palavra</string>
-    <string name="system_equalizer_desc">Abrir equalizador embutido do Android</string>
     <string name="eq_wizard">Mago do AutoEQ</string>
     <string name="playlist_unavailable">Lista de Reprodução indisponível</string>
     <string name="kmp_upgrade_title">AuraMusic KMP %s está disponível</string>

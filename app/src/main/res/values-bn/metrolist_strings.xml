@@ -666,8 +666,6 @@
     <string name="wrapped_playlist_title">আপনার %s মোড়ক</string>
     <string name="equalizer_header">ইকুয়ালাইজার</string>
     <string name="no_profiles">কোনো ইকুয়ালাইজার প্রোফাইল নেই</string>
-    <string name="system_equalizer">সিস্টেম ইকুয়ালাইজার</string>
-    <string name="system_equalizer_desc">অ্যান্ড্রয়েডের বিল্ট-ইন ইকুয়ালাইজার খুলুন</string>
     <plurals name="band_count">
         <item quantity="one">%d টি ব্যান্ড</item>
         <item quantity="other">%d টি ব্যান্ড</item>

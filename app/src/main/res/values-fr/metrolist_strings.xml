@@ -266,7 +266,6 @@
         <item quantity="other">%d bandes</item>
     </plurals>
     <string name="pause_music_when_media_is_muted">Mettre la musique en pause lorsque le son est coupé</string>
-    <string name="system_equalizer">Égaliseur système</string>
     <string name="album_art">Pochette d\'album</string>
     <string name="no_song_playing">Aucun titre en cours de lecture</string>
     <string name="tap_to_open">Appuyez pour ouvrir AuraMusic</string>
@@ -771,7 +770,6 @@
     <string name="more_options">Plus d\'options</string>
     <string name="autoplay">Lecture automatique</string>
     <string name="autoplay_desc">Lancez automatiquement le titre suivant à la fin de celui en cours</string>
-    <string name="system_equalizer_desc">Ouvrir l\'égaliseur intégré d\'Android</string>
     <string name="eq_wizard">Assistant AutoEQ</string>
     <string name="eq_download_db">Télécharger la base de données AutoEQ (17 Mo)</string>
     <string name="eq_downloading">Téléchargement en cours…</string>

@@ -360,8 +360,6 @@
     <string name="equalizer_header">Еквалайзер</string>
     <string name="no_profiles">Няма налични профили</string>
     <string name="import_profile">Импортирай профил</string>
-    <string name="system_equalizer">Системен еквалайзер</string>
-    <string name="system_equalizer_desc">Отвори на Android вградения еквалайзер</string>
     <string name="eq_disabled">Изключен</string>
     <string name="eq_wizard">Съветник за AutoEQ</string>
     <string name="eq_download_db">Изтегли базата данни на AutoEQ (17 MB)</string>

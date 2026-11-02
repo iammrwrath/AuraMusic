@@ -166,10 +166,6 @@ fun PlayerMenu(
     val pendingSuggestions by listenTogetherManager?.pendingSuggestions?.collectAsStateWithLifecycle(initialValue = emptyList())
         ?: remember { mutableStateOf(emptyList()) }
 
-    val systemEqLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { }
-
     AddToPlaylistDialog(
         isVisible = showChoosePlaylistDialog,
         onGetSong = { playlist ->
@@ -693,33 +689,6 @@ fun PlayerMenu(
                                     },
                                     onClick = {
                                         navController.navigate("equalizer")
-                                        onDismiss()
-                                    },
-                                ),
-                            )
-                            add(
-                                Material3MenuItemData(
-                                    title = { Text(text = stringResource(R.string.system_equalizer)) },
-                                    description = { Text(text = stringResource(R.string.system_equalizer_desc)) },
-                                    icon = {
-                                        Icon(
-                                            painter = painterResource(R.drawable.graphic_eq),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(24.dp),
-                                        )
-                                    },
-                                    onClick = {
-                                        val audioSessionId = playerConnection.player.audioSessionId
-                                        if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0) {
-                                            val intent = Intent(AudioEffect.ACTION_DISPLAY_AUDIO_EFFECT_CONTROL_PANEL).apply {
-                                                putExtra(AudioEffect.EXTRA_AUDIO_SESSION, audioSessionId)
-                                                putExtra(AudioEffect.EXTRA_PACKAGE_NAME, context.packageName)
-                                                putExtra(AudioEffect.EXTRA_CONTENT_TYPE, AudioEffect.CONTENT_TYPE_MUSIC)
-                                            }
-                                            if (intent.resolveActivity(context.packageManager) != null) {
-                                                systemEqLauncher.launch(intent)
-                                            }
-                                        }
                                         onDismiss()
                                     },
                                 ),

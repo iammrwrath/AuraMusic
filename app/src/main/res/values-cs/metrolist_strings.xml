@@ -269,7 +269,6 @@
     <string name="import_error_title">Chyba importu</string>
     <string name="wavy">Vlnitý</string>
     <string name="pause_music_when_media_is_muted">Pozastavit hudbu při ztlumení médií</string>
-    <string name="system_equalizer">Systémový ekvalizér</string>
     <string name="album_art">Obal alba</string>
     <string name="no_song_playing">Nehraje žádná skladba</string>
     <string name="tap_to_open">Klepnutím otevřete AuraMusic</string>
@@ -777,7 +776,6 @@
     <string name="switch_to_list_view">Přepnout na zobrazení v seznamu</string>
     <string name="switch_to_grid_view">Přepnout na zobrazení v mřížce</string>
     <string name="more_options">Další možnosti</string>
-    <string name="system_equalizer_desc">Otevřít vestavěný ekvalizér systému Android</string>
     <string name="eq_wizard">Průvodce AutoEQ</string>
     <string name="eq_download_db">Stáhnout databázi AutoEQ (17 MB)</string>
     <string name="eq_downloading">Stahování…</string>

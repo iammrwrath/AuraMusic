@@ -643,8 +643,6 @@
     <string name="equalizer_header">Equalizer</string>
     <string name="no_profiles">Geen equalizer-profiele ni</string>
     <string name="import_profile">Voer profiel in</string>
-    <string name="system_equalizer">Stelselequalizer</string>
-    <string name="system_equalizer_desc">Maak Android se ingeboude equalizer oop</string>
     <string name="eq_disabled">Gedeaktiveer</string>
     <string name="eq_wizard">AutoEQ-towenaar</string>
     <string name="eq_download_db">Laai AutoEQ-databasis af (17 MB)</string>

@@ -42,7 +42,6 @@
     <string name="equalizer_header">이퀄라이저</string>
     <string name="no_profiles">이퀄라이저 프로필 없음</string>
     <string name="import_profile">프로필 가져오기</string>
-    <string name="system_equalizer">시스템 이퀄라이저</string>
     <string name="delete_profile_desc">프로필 삭제</string>
     <string name="copied_title">제목 복사됨</string>
     <string name="copied_artist">아티스트 복사됨</string>
@@ -770,7 +769,6 @@
     <string name="kmp_upgrade_later">지금은 안 함</string>
     <string name="audio_track_playback_params">하드웨어 오디오 처리 사용</string>
     <string name="audio_track_playback_params_description">속도/피치 변경 시 소프트웨어 처리 대신 Android AudioTrack을 사용합니다. 극단적인 피치 값에서 더 안정적입니다</string>
-    <string name="system_equalizer_desc">Android 내장 이퀄라이저 열기</string>
     <string name="eq_wizard">AutoEQ 마법사</string>
     <string name="eq_download_db">AutoEQ 데이터베이스 다운로드 (17 MB)</string>
     <string name="eq_downloading">다운로드 중…</string>

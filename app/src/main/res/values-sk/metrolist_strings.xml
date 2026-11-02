@@ -280,7 +280,6 @@
     <string name="equalizer_header">Ekvalizér</string>
     <string name="no_profiles">Žiadne profily ekvalizéra</string>
     <string name="import_profile">Importovať profil</string>
-    <string name="system_equalizer">Systémový ekvalizér</string>
     <string name="eq_disabled">Zakázané</string>
     <plurals name="band_count">
         <item quantity="one">%d pásmo</item>

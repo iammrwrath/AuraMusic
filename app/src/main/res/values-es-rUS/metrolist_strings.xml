@@ -262,7 +262,6 @@
     <string name="equalizer_header">Ecualizador</string>
     <string name="no_profiles">No hay perfiles de ecualizador</string>
     <string name="import_profile">Importar perfil</string>
-    <string name="system_equalizer">Ecualizador del sistema</string>
     <string name="eq_disabled">Desactivado</string>
     <plurals name="band_count">
         <item quantity="one">%d banda</item>
@@ -645,7 +644,6 @@
     <string name="transparent">Transparente</string>
     <string name="mini_player_background_not_available">No disponible cuando el diseño nuevo del mini reproductor esta deshabilitado</string>
     <string name="lyrics_animation_style_title">Estilo de animación letra por letra</string>
-    <string name="system_equalizer_desc">Abrir el ecualizador por defecto de Android</string>
     <string name="eq_wizard">Asistente de AutoEQ</string>
     <string name="eq_download_db">Descargar la base de datos de AutoEQ (17 MB)</string>
     <string name="eq_downloading">Descargando…</string>

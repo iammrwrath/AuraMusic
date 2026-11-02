@@ -269,7 +269,6 @@
     <string name="like">Suka</string>
     <string name="widget_description">Widget pemutar musik dengan kontrol pemutaran</string>
     <string name="turntable_widget_description">Widget musik berbentuk lingkaran dengan kontrol putar dan suka</string>
-    <string name="system_equalizer">Ekualiser sistem</string>
     <string name="remember_shuffle_and_repeat">Ingat status acak dan ulang</string>
     <string name="remember_shuffle_and_repeat_desc">Ingat pengaturan acak dan pengulangan saat aplikasi dimulai ulang</string>
     <string name="lyrics_offset">Offset lirik</string>
@@ -759,7 +758,6 @@
     <string name="switch_to_list_view">Beralih ke tampilan daftar</string>
     <string name="switch_to_grid_view">Beralih ke tampilan kisi</string>
     <string name="more_options">Opsi lainnya</string>
-    <string name="system_equalizer_desc">Buka Ekualizer Android bawaan</string>
     <string name="eq_downloading">Mengunduh…</string>
     <string name="import_from_file">Impor dari file</string>
     <string name="wizard_select_model">Pilih Model</string>

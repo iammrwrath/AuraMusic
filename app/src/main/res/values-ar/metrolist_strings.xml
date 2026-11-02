@@ -288,7 +288,6 @@
     <string name="remember_shuffle_and_repeat">تذكر خلط الاغاني و تكرار الأغنية</string>
     <string name="remember_shuffle_and_repeat_desc">تذكر وضع خلط الأغاني و تكرار الأغنية بعد إعادة تشغيل التطبيق</string>
     <string name="lyrics_offset">ازاحة كلمات الأغنية</string>
-    <string name="system_equalizer">معادل النظام</string>
     <string name="album_art">صورة الالبوم</string>
     <string name="no_song_playing">لا اغنية حاليا</string>
     <string name="tap_to_open">اضغط لفتح تطبيق متروليست</string>

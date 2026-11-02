@@ -278,7 +278,6 @@
     <string name="like">Нравится</string>
     <string name="widget_description">Виджет музыкального плеера с элементами управления воспроизведением</string>
     <string name="turntable_widget_description">Круглый музыкальный виджет с кнопками воспроизведения и лайка</string>
-    <string name="system_equalizer">Системный эквалайзер</string>
     <string name="remember_shuffle_and_repeat">Запоминать перемешивание и повтор</string>
     <string name="remember_shuffle_and_repeat_desc">Запоминать настройки перемешивания и повтора при перезапуске приложения</string>
     <string name="lyrics_offset">Смещение текста песни</string>
@@ -777,7 +776,6 @@
     <string name="more_options">Другие параметры</string>
     <string name="autoplay">Автовоспроизведение</string>
     <string name="autoplay_desc">Автоматически воспроизводить следующий трек после окончания текущего</string>
-    <string name="system_equalizer_desc">Открыть встроенный эквалайзер Android</string>
     <string name="eq_wizard">Мастер AutoEQ</string>
     <string name="eq_download_db">Скачать базу данных AutoEQ (17 МБ)</string>
     <string name="eq_downloading">Скачивание…</string>

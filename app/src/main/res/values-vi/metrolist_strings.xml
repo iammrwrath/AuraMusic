@@ -494,7 +494,6 @@
     <string name="equalizer_header">Bộ cân bằng âm thanh</string>
     <string name="no_profiles">Không có hồ sơ chỉnh âm</string>
     <string name="import_profile">Nhập hồ sơ</string>
-    <string name="system_equalizer">Bộ chỉnh âm hệ thống</string>
     <string name="eq_disabled">Vô hiệu hoá</string>
     <plurals name="band_count">
         <item quantity="other">%d ban nhạc</item>
@@ -757,7 +756,6 @@
     <string name="time_transfer_convert">Chuyển đổi</string>
     <string name="song_dropdown_more_results">Tiếp tục nhập để thu hẹp kết quả (còn %d)</string>
     <string name="clear_search">Xóa tìm kiếm</string>
-    <string name="system_equalizer_desc">Mở bộ chỉnh âm tích hợp sẵn của Android</string>
     <string name="eq_wizard">Trình hướng dẫn AutoEQ</string>
     <string name="eq_download_db">Tải dữ liệu của AutoEQ (17 MB)</string>
     <string name="eq_downloading">Đang tải xuống…</string>

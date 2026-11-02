@@ -281,7 +281,6 @@
     <string name="skip_silence_instant">Natychmiast pomijaj ciszę</string>
     <string name="like">Polub</string>
     <string name="widget_description">Widżet odtwarzacza z przyciskami sterowania</string>
-    <string name="system_equalizer">Korektor systemowy</string>
     <string name="skip_silence_instant_desc">Pomijaj ciszę bez zmiany tempa odtwarzania</string>
     <string name="persistent_shuffle_title">Trwałe mieszanie utworów</string>
     <string name="persistent_shuffle_desc">Zachowaj tryb mieszania po zmianie utworu lub playlisty</string>
@@ -767,7 +766,6 @@
     <string name="experimental_lyrics">Eksperymentalne teksty</string>
     <string name="experimental_lyrics_beta_title">Funkcja eksperymentalna</string>
     <string name="experimental_lyrics_beta_message">Nowa funkcja tekstów jest aktualnie rozwijana i może zawierać błędy. Czy na pewno chcesz ją włączyć?</string>
-    <string name="system_equalizer_desc">Otwórz systemowy equalizer Androida</string>
     <string name="eq_download_db">Pobierz dane AutoEQ (17MB)</string>
     <string name="eq_downloading">Pobieranie…</string>
     <string name="import_from_file">Importuj z pliku</string>

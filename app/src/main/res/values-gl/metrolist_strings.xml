@@ -261,8 +261,6 @@
     <string name="equalizer_header">Ecualizador</string>
     <string name="no_profiles">Sen perfís de ecualizador</string>
     <string name="import_profile">Importar perfil</string>
-    <string name="system_equalizer">Ecualizador do sistema</string>
-    <string name="system_equalizer_desc">Abrir o ecualizador nativo de Android</string>
     <string name="eq_disabled">Desactivado</string>
     <string name="eq_wizard">Asistente do AutoEQ</string>
     <string name="eq_download_db">Descargar a base de datos do AutoEQ (17 MB)</string>

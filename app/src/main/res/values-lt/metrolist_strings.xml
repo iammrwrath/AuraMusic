@@ -206,7 +206,6 @@
     <string name="equalizer_header">Ekvalaizeris</string>
     <string name="no_profiles">Nėra ekvalaizerio profilių</string>
     <string name="import_profile">Įkelti profilį</string>
-    <string name="system_equalizer">Sistemos ekvalaizeris</string>
     <plurals name="band_count">
         <item quantity="one">%d juosta</item>
         <item quantity="few">%d juostos</item>

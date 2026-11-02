@@ -266,7 +266,6 @@
     <string name="import_error_title">Errore di importazione</string>
     <string name="wavy">Ondulato</string>
     <string name="pause_music_when_media_is_muted">Metti la musica in pausa quando il media è mutato</string>
-    <string name="system_equalizer">Equalizzatore di sistema</string>
     <string name="album_art">Copertina</string>
     <string name="no_song_playing">Nessun brano in riproduzione</string>
     <string name="tap_to_open">Premi per aprire AuraMusic</string>
@@ -771,7 +770,6 @@
     <string name="more_options">Più opzioni</string>
     <string name="autoplay">Riproduzione automatica</string>
     <string name="autoplay_desc">Riproduci automaticamente il brano successivo al termine di quello corrente</string>
-    <string name="system_equalizer_desc">Apri l\'equalizzatore integrato di Android</string>
     <string name="import_from_file">Importa da file</string>
     <string name="wizard_select_profiles">Seleziona Profili</string>
     <string name="wizard_search_model_hint">Cerca il modello delle tue cuffie o auricolari</string>

@@ -419,8 +419,6 @@
     <string name="equalizer_header">Ekualizadorea</string>
     <string name="no_profiles">Ekualizadore profilik ez</string>
     <string name="import_profile">Profila inportatu</string>
-    <string name="system_equalizer">Sistemaren ekualizadorea</string>
-    <string name="system_equalizer_desc">Ireki Android-en jatorrizko ekualizadorea</string>
     <string name="eq_disabled">Ezgaituta</string>
     <string name="eq_wizard">AutoEQ laguntzailea</string>
     <string name="eq_download_db">AutoEQ datu-basea deskargatu (17 MB)</string>

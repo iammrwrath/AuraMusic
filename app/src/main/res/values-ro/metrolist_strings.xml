@@ -279,7 +279,6 @@
     <string name="remember_shuffle_and_repeat">Memorează modurile de amestecare și de repetare</string>
     <string name="remember_shuffle_and_repeat_desc">Memorează setările modurilor de amestecare și de repetare atunci când aplicația este repornită</string>
     <string name="lyrics_offset">Decalaj versuri</string>
-    <string name="system_equalizer">Egalizator de sistem</string>
     <string name="album_art">Coperta albumului</string>
     <string name="no_song_playing">Nu se redă nicio melodie</string>
     <string name="tap_to_open">Atinge pentru a deschide AuraMusic</string>
@@ -771,7 +770,6 @@
     <string name="more_options">Mai multe opțiuni</string>
     <string name="autoplay">Redare automată</string>
     <string name="autoplay_desc">Redă automat următoarea melodie atunci când cea curentă se termină</string>
-    <string name="system_equalizer_desc">Deschide egalizatorul încorporat din Android</string>
     <string name="eq_wizard">Expert de configurare AutoEQ</string>
     <string name="eq_download_db">Descarcă baza de date AutoEQ (17 MB)</string>
     <string name="eq_downloading">Se descarcă…</string>

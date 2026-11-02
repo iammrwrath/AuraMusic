@@ -206,7 +206,6 @@
     <string name="import_profile">匯入設定檔</string>
     <string name="equalizer_header">等化器</string>
     <string name="no_profiles">無等化器設定檔</string>
-    <string name="system_equalizer">系統等化器</string>
     <string name="eq_disabled">關閉</string>
     <string name="cache_size_warning_confirm">繼續</string>
     <string name="delete_profile_desc">刪除設定檔</string>
@@ -722,7 +721,6 @@
     </plurals>
     <string name="alarm_random_disabled">依照次序</string>
     <string name="alarm_save">儲存</string>
-    <string name="system_equalizer_desc">開啟安卓系統內建的等化器</string>
     <string name="eq_wizard">AutoEQ精靈</string>
     <string name="eq_download_db">下載AutoEQ資料庫 (17 MB)</string>
     <string name="eq_downloading">下載中…</string>

@@ -243,7 +243,6 @@
     <string name="equalizer_header">Ισοσταθμιστής</string>
     <string name="no_profiles">Δεν υπάρχουν προφίλ ισοσταθμιστή</string>
     <string name="import_profile">Εισαγωγή Προφίλ</string>
-    <string name="system_equalizer">Ισοσταθμιστής Συστήματος</string>
     <string name="eq_disabled">Απενεργοποιημένο</string>
     <plurals name="band_count">
         <item quantity="one">%d συγκρότημα</item>

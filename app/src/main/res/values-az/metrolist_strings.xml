@@ -410,8 +410,6 @@
     <string name="equalizer_header">Ekvalayzer</string>
     <string name="no_profiles">Ekvalayzer profilləri yoxdur</string>
     <string name="import_profile">İdxal profili</string>
-    <string name="system_equalizer">Sistem ekvalayzeri</string>
-    <string name="system_equalizer_desc">Android daxili ekvalayzerini açın</string>
     <string name="eq_disabled">Deaktiv edilib</string>
     <string name="eq_wizard">AutoEQ Ustası</string>
     <string name="eq_download_db">AutoEQ məlumat bazasını yükləyin (17 MB)</string>

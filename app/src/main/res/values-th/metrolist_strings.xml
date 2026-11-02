@@ -269,7 +269,6 @@
     <string name="equalizer_header">อีควอไลเซอร์</string>
     <string name="no_profiles">ไม่มีโปรไฟล์อีควอไลเซอร์</string>
     <string name="import_profile">นำเข้าโปรไฟล์</string>
-    <string name="system_equalizer">อีควอไลเซอร์ของระบบ</string>
     <string name="eq_disabled">ปิดใช้งาน</string>
     <plurals name="band_count">
         <item quantity="other">%d แบนด์</item>
@@ -725,7 +724,6 @@
     <string name="transparent">โปร่งใส</string>
     <string name="mini_player_background_not_available">ไม่สามารถใช้งานได้เมื่อปิดดีไซน์มินิเพลเยอร์แบบใหม่</string>
     <string name="lyrics_animation_style_title">รูปแบบแอนิเมชันแบบคำต่อคำ</string>
-    <string name="system_equalizer_desc">เปิดอีควอไลเซอร์ของระบบ Android</string>
     <string name="eq_wizard">ตัวช่วยตั้งค่า AutoEQ</string>
     <string name="eq_download_db">ดาวน์โหลดฐานข้อมูล AutoEQ (17 MB)</string>
     <string name="eq_downloading">กำลังดาวน์โหลด…</string>

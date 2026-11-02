@@ -265,7 +265,6 @@
     <string name="pause_music_when_media_is_muted">Medya sesi kapatıldığında müziği duraklat</string>
     <string name="remember_shuffle_and_repeat">Karıştır ve tekrarla ayarını hatırla</string>
     <string name="remember_shuffle_and_repeat_desc">Uygulama yeniden başlatıldığında karıştır ve tekrarla ayarlarını hatırla</string>
-    <string name="system_equalizer">Sistem ekolayzırı</string>
     <string name="album_art">Albüm görseli</string>
     <string name="no_song_playing">Oynatılan şarkı yok</string>
     <string name="tap_to_open">AuraMusic\'i açmak için dokun</string>
@@ -765,7 +764,6 @@
     <string name="parsed_from_link">Bağlantıdan ayrıştırıldı</string>
     <string name="autoplay">Oto oynatma</string>
     <string name="autoplay_desc">Mevcut şarkı bittiğinde sonraki şarkıyı otomatik olarak çal</string>
-    <string name="system_equalizer_desc">Android\'in içinde gelen ekolayzeri aç</string>
     <string name="eq_wizard">OtoEQ aracı</string>
     <string name="eq_download_db">OtoEQ veritabanını indir (17 MB)</string>
     <string name="eq_downloading">İndiriliyor…</string>
