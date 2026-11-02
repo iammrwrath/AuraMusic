@@ -43,6 +43,7 @@ import com.metrolist.music.playback.video.VideoPlayerManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import timber.log.Timber
 
 private fun isWifiConnected(context: Context): Boolean {
     val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
@@ -139,11 +140,13 @@ fun AmbientVideoCanvas(
         }
 
         isVideoReady = false
+        Timber.tag("AmbientVideoCanvas").d("Loading ambient video stream for mediaId: $mediaId")
         val streamData = withContext(Dispatchers.IO) {
             videoPlayerManager.resolveStreamData(mediaId)
         }
 
         val videoUrl = streamData?.videoUrl
+        Timber.tag("AmbientVideoCanvas").d("Resolved stream for mediaId: $mediaId, videoUrl exists: ${videoUrl != null}")
         if (videoUrl != null && ambientExoPlayer != null) {
             val okHttpClient = OkHttpClient.Builder()
                 .proxy(YouTube.proxy)
@@ -167,9 +170,7 @@ fun AmbientVideoCanvas(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black),
+        modifier = modifier.fillMaxSize(),
     ) {
         // Base layer: Procedural generative motion art (always active as underlying ambiance / fallback)
         GenerativeMotionCanvas(
@@ -197,6 +198,7 @@ fun AmbientVideoCanvas(
                             )
                             setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                             setKeepContentOnPlayerReset(true)
+                            setEnableComposeSurfaceSyncWorkaround(true)
                             this.player = player
                         }
                     },
@@ -204,6 +206,9 @@ fun AmbientVideoCanvas(
                         if (playerView.player != player) {
                             playerView.player = player
                         }
+                    },
+                    onRelease = { playerView ->
+                        playerView.player = null
                     },
                     modifier = Modifier.fillMaxSize(),
                 )

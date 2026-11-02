@@ -149,6 +149,7 @@ import com.metrolist.music.LocalPlayerConnection
 import com.metrolist.music.R
 import com.metrolist.music.constants.AnimatedCanvasProceduralOnlyKey
 import com.metrolist.music.constants.AnimatedCanvasWifiOnlyKey
+import com.metrolist.music.constants.AnimatedCoverArtKey
 import com.metrolist.music.constants.AudioQuality
 import com.metrolist.music.constants.AudioQualityKey
 import com.metrolist.music.constants.CropAlbumArtKey
@@ -455,6 +456,8 @@ fun BottomSheetPlayer(
     // Track when we last manually set position to avoid Cast overwriting it
     var lastManualSeekTime by remember { mutableLongStateOf(0L) }
 
+    val animatedCoverArt by rememberPreference(AnimatedCoverArtKey, true)
+
     var gradientColors by remember {
         mutableStateOf<List<Color>>(emptyList())
     }
@@ -467,8 +470,8 @@ fun BottomSheetPlayer(
     val defaultGradientColors = listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surfaceVariant)
     val fallbackColor = MaterialTheme.colorScheme.surface.toArgb()
 
-    LaunchedEffect(mediaMetadata?.id, playerBackground) {
-        if (playerBackground == PlayerBackgroundStyle.GRADIENT) {
+    LaunchedEffect(mediaMetadata?.id, playerBackground, animatedCoverArt) {
+        if (playerBackground == PlayerBackgroundStyle.GRADIENT || animatedCoverArt) {
             val currentMetadata = mediaMetadata
             if (currentMetadata != null && currentMetadata.thumbnailUrl != null) {
                 val cachedColors = gradientColorsCache[currentMetadata.id]

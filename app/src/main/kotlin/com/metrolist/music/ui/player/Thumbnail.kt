@@ -597,6 +597,13 @@ private fun ThumbnailItem(
                     isPlayerExpanded() &&
                     videoPlayerManager != null
 
+                // Always compose ThumbnailImage as the underlying base layer
+                ThumbnailImage(
+                    artworkUri = artworkUriToUse,
+                    cropArtwork = cropAlbumArt
+                )
+
+                // When animated cover art is enabled, overlay AmbientVideoCanvas seamlessly on top
                 if (showAnimatedCover) {
                     AmbientVideoCanvas(
                         mediaId = currentMediaId,
@@ -607,11 +614,6 @@ private fun ThumbnailItem(
                         proceduralOnly = animatedCanvasProceduralOnly,
                         showScrim = false,
                         modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    ThumbnailImage(
-                        artworkUri = artworkUriToUse,
-                        cropArtwork = cropAlbumArt
                     )
                 }
             }
