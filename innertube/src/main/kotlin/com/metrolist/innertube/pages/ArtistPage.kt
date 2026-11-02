@@ -196,26 +196,39 @@ data class ArtistPage(
                 }
 
                 renderer.isPlaylist -> {
-                    // Playlist from YouTube Music
+                    val id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null
+                    val subtitleRuns = renderer.subtitle?.runs
+                    val authorRun = subtitleRuns?.firstOrNull {
+                        it.navigationEndpoint?.browseEndpoint != null
+                    } ?: subtitleRuns?.filterNot {
+                        it.text == " • " ||
+                            it.text.trim().equals("Playlist", ignoreCase = true) ||
+                            it.text.any { c -> c.isDigit() }
+                    }?.firstOrNull() ?: subtitleRuns?.firstOrNull()
+                    val defaultWatchEndpoint = WatchEndpoint(playlistId = id)
                     PlaylistItem(
-                        id = renderer.navigationEndpoint.browseEndpoint?.browseId?.removePrefix("VL") ?: return null,
+                        id = id,
                         title = renderer.title.runs?.firstOrNull()?.text ?: return null,
-                        author = Artist(
-                            name = renderer.subtitle?.runs?.firstOrNull()?.text ?: return null,
-                            id = null
-                        ),
-                        songCountText = null,
+                        author = authorRun?.let {
+                            Artist(
+                                name = it.text,
+                                id = it.navigationEndpoint?.browseEndpoint?.browseId
+                            )
+                        },
+                        songCountText = subtitleRuns?.findLast {
+                            it.text.any { c -> c.isDigit() } && !it.text.contains("view", ignoreCase = true)
+                        }?.text,
                         thumbnail = renderer.thumbnailRenderer.getThumbnailUrl() ?: return null,
                         playEndpoint = renderer.thumbnailOverlay
                             ?.musicItemThumbnailOverlayRenderer?.content
                             ?.musicPlayButtonRenderer?.playNavigationEndpoint
-                            ?.watchPlaylistEndpoint ?: return null,
+                            ?.watchPlaylistEndpoint ?: defaultWatchEndpoint,
                         shuffleEndpoint = renderer.menu?.menuRenderer?.items?.find {
                             it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
-                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null,
-                        radioEndpoint = renderer.menu.menuRenderer.items.find {
+                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: defaultWatchEndpoint,
+                        radioEndpoint = renderer.menu?.menuRenderer?.items?.find {
                             it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
-                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null
+                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint
                     )
                 }
 
@@ -229,10 +242,10 @@ data class ArtistPage(
                         }?.toggleMenuServiceItemRenderer?.defaultServiceEndpoint?.subscribeEndpoint?.channelIds?.firstOrNull(),
                         shuffleEndpoint = renderer.menu?.menuRenderer?.items?.find {
                             it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
-                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null,
-                        radioEndpoint = renderer.menu.menuRenderer.items.find {
+                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,
+                        radioEndpoint = renderer.menu?.menuRenderer?.items?.find {
                             it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
-                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint ?: return null,
+                        }?.menuNavigationItemRenderer?.navigationEndpoint?.watchPlaylistEndpoint,
                     )
                 }
 

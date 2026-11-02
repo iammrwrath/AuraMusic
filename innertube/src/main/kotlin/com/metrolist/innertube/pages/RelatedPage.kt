@@ -107,21 +107,33 @@ data class RelatedPage(
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                             } != null,
                     )
-                renderer.isPlaylist ->
+                renderer.isPlaylist -> {
+                    val id =
+                        renderer.navigationEndpoint.browseEndpoint
+                            ?.browseId
+                            ?.removePrefix("VL") ?: return null
+                    val subtitleRuns = renderer.subtitle?.runs
+                    val authorRun = subtitleRuns?.firstOrNull {
+                        it.navigationEndpoint?.browseEndpoint != null
+                    } ?: subtitleRuns?.filterNot {
+                        it.text == " • " ||
+                            it.text.trim().equals("Playlist", ignoreCase = true) ||
+                            it.text.any { c -> c.isDigit() }
+                    }?.firstOrNull() ?: subtitleRuns?.lastOrNull()
+                    val defaultWatchEndpoint = com.metrolist.innertube.models.WatchEndpoint(playlistId = id)
                     PlaylistItem(
-                        id =
-                            renderer.navigationEndpoint.browseEndpoint
-                                ?.browseId
-                                ?.removePrefix("VL") ?: return null,
+                        id = id,
                         title =
                             renderer.title.runs
                                 ?.firstOrNull()
                                 ?.text ?: return null,
-                        author = Artist(
-                            name = renderer.subtitle?.runs?.lastOrNull()?.text ?: return null,
-                            id = null
-                        ),
-                        songCountText = renderer.subtitle.runs.findLast {
+                        author = authorRun?.let {
+                            Artist(
+                                name = it.text,
+                                id = it.navigationEndpoint?.browseEndpoint?.browseId
+                            )
+                        },
+                        songCountText = subtitleRuns?.findLast {
                             it.text.any { c -> c.isDigit() } && !it.text.contains("view", ignoreCase = true)
                         }?.text,
                         thumbnail = renderer.thumbnailRenderer.getThumbnailUrl() ?: return null,
@@ -131,7 +143,7 @@ data class RelatedPage(
                                 ?.content
                                 ?.musicPlayButtonRenderer
                                 ?.playNavigationEndpoint
-                                ?.watchPlaylistEndpoint ?: return null,
+                                ?.watchPlaylistEndpoint ?: defaultWatchEndpoint,
                         shuffleEndpoint =
                             renderer.menu
                                 ?.menuRenderer
@@ -140,15 +152,16 @@ data class RelatedPage(
                                     it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
                                 }?.menuNavigationItemRenderer
                                 ?.navigationEndpoint
-                                ?.watchPlaylistEndpoint ?: return null,
+                                ?.watchPlaylistEndpoint ?: defaultWatchEndpoint,
                         radioEndpoint =
-                            renderer.menu.menuRenderer.items
-                                .find {
+                            renderer.menu?.menuRenderer?.items
+                                ?.find {
                                     it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
                                 }?.menuNavigationItemRenderer
                                 ?.navigationEndpoint
                                 ?.watchPlaylistEndpoint
                     )
+                }
                 renderer.isArtist -> {
                     ArtistItem(
                         id = renderer.navigationEndpoint.browseEndpoint?.browseId ?: return null,
@@ -165,14 +178,14 @@ data class RelatedPage(
                                     it.menuNavigationItemRenderer?.icon?.iconType == "MUSIC_SHUFFLE"
                                 }?.menuNavigationItemRenderer
                                 ?.navigationEndpoint
-                                ?.watchPlaylistEndpoint ?: return null,
+                                ?.watchPlaylistEndpoint,
                         radioEndpoint =
-                            renderer.menu.menuRenderer.items
-                                .find {
+                            renderer.menu?.menuRenderer?.items
+                                ?.find {
                                     it.menuNavigationItemRenderer?.icon?.iconType == "MIX"
                                 }?.menuNavigationItemRenderer
                                 ?.navigationEndpoint
-                                ?.watchPlaylistEndpoint ?: return null,
+                                ?.watchPlaylistEndpoint,
                     )
                 }
                 renderer.isPodcast -> {
