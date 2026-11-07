@@ -17,6 +17,7 @@ import com.metrolist.innertube.models.SongItem
 import com.metrolist.innertube.models.YTItem
 import com.metrolist.innertube.models.oddElements
 import com.metrolist.innertube.models.splitBySeparator
+import com.metrolist.innertube.models.WatchEndpoint
 import com.metrolist.innertube.models.filterExplicit
 import com.metrolist.innertube.models.filterVideoSongs
 import com.metrolist.innertube.utils.parseTime
@@ -345,6 +346,9 @@ data class HomePage(
                             ?.musicItemThumbnailOverlayRenderer?.content
                             ?.musicPlayButtonRenderer?.playNavigationEndpoint
                             ?.watchEndpoint?.videoId
+                            ?: renderer.thumbnailRenderer.getThumbnailUrl()?.let { url ->
+                                Regex("""/vi(?:_webp)?/([a-zA-Z0-9_-]{11})/""").find(url)?.groupValues?.get(1)
+                            }
                         val titleText = renderer.title.runs?.firstOrNull()?.text
                         val thumbnail = renderer.thumbnailRenderer.getThumbnailUrl()
 
@@ -385,9 +389,9 @@ data class HomePage(
                                 it.musicInlineBadgeRenderer?.icon?.iconType == "MUSIC_EXPLICIT_BADGE"
                             } == true,
                             endpoint = renderer.thumbnailOverlay
-                                .musicItemThumbnailOverlayRenderer.content
-                                .musicPlayButtonRenderer.playNavigationEndpoint
-                                .watchEndpoint,
+                                ?.musicItemThumbnailOverlayRenderer?.content
+                                ?.musicPlayButtonRenderer?.playNavigationEndpoint
+                                ?.watchEndpoint ?: WatchEndpoint(videoId = videoId),
                             libraryAddToken = libraryTokens.addToken,
                             libraryRemoveToken = libraryTokens.removeToken,
                         )

@@ -207,7 +207,8 @@ class CastConnectionHandler(
     fun navigateToMediaIfInQueue(mediaId: String): Boolean {
         val player = castPlayer ?: return false
         repeat(player.mediaItemCount) { index ->
-            if (player.getMediaItemAt(index).mediaId == mediaId) {
+            val item = runCatching { player.getMediaItemAt(index) }.getOrNull()
+            if (item?.mediaId == mediaId) {
                 if (index != player.currentMediaItemIndex) player.seekTo(index, 0L)
                 musicService.player.pause()
                 return true
@@ -258,11 +259,17 @@ class CastConnectionHandler(
 
     private fun appendQueueIfNeeded() {
         val player = castPlayer ?: return
-        if (extensionJob?.isActive == true || player.currentMediaItemIndex < player.mediaItemCount - 2) return
+        val count = player.mediaItemCount
+        if (count == 0 || extensionJob?.isActive == true || player.currentMediaItemIndex < count - 2) return
 
         extensionJob =
             scope.launch {
-                val lastMediaId = player.getMediaItemAt(player.mediaItemCount - 1).mediaId
+                val currentCount = player.mediaItemCount
+                if (currentCount == 0) return@launch
+                val lastItem =
+                    runCatching { player.getMediaItemAt(currentCount - 1) }.getOrNull()
+                        ?: return@launch
+                val lastMediaId = lastItem.mediaId
                 val localPlayer = musicService.player
                 var index = localPlayer.indexOfMediaId(lastMediaId)
                 if (index == C.INDEX_UNSET || localPlayer.currentTimeline.isEmpty) return@launch
@@ -329,7 +336,8 @@ class CastConnectionHandler(
 
     private fun Player.indexOfMediaId(mediaId: String): Int {
         repeat(mediaItemCount) { index ->
-            if (getMediaItemAt(index).mediaId == mediaId) return index
+            val item = runCatching { getMediaItemAt(index) }.getOrNull()
+            if (item?.mediaId == mediaId) return index
         }
         return C.INDEX_UNSET
     }
