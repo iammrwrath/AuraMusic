@@ -1,3 +1,19 @@
+---v13.8.46
+
+# AuraMusic v13.8.46 - Playback, InnerTube & UI Stability
+
+This release brings stability fixes to Cast queue playback, restores missing home/artist recommendations and community playlists, and introduces a cleaner settings architecture with unified lyrics management.
+
+### 🐛 Bug Fixes & InnerTube Stability
+- **Cast Queue Crash Fix**: Guarded against null or empty timeline windows in `CastConnectionHandler` when syncing queue items during remote casting, eliminating sudden crashes when seeking or switching queues.
+- **InnerTube Episode & Recommendation Fallbacks**: Improved episode parsing and ensured Community Playlists, Related shelves, and artist carousels populate reliably even when YouTube Music omits optional navigation menu endpoints.
+
+### 🎨 UI & Settings Streamlining
+- **Unified Lyrics Settings**: Consolidated all lyrics providers, formatting, romaji/furigana options, and text sizing into a dedicated `Settings > Lyrics` view.
+- **Refined Player Settings**: Cleaned up duplicated entries, assigned distinct icons across player preferences, and removed redundant equalizer shortcuts from player menus.
+
+~ @iammrwrath
+
 ---v13.8.0
 
 # AuraMusic v13.8.0 - Multi-Device Performance & Fluidity (Minor Release)
