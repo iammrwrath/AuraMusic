@@ -852,6 +852,12 @@ class MusicService :
                     val oldQuality = audioQuality
                     audioQuality = newQuality
 
+                    val isMaxQuality = (newQuality == com.metrolist.music.constants.AudioQuality.MAX)
+                    playerNormalizationProcessors.values.forEach { processor ->
+                        processor.isLosslessOrMaxQuality = isMaxQuality
+                    }
+                    setupAudioNormalization()
+
                     if (isFirstQualityEmit) {
                         isFirstQualityEmit = false
                         Timber.tag(TAG).i("QUALITY INIT: $newQuality")
@@ -1418,6 +1424,7 @@ class MusicService :
     private fun createExoPlayer(prefs: Preferences? = startupPrefs): ExoPlayer {
         val normalizationProcessor = VolumeNormalizationAudioProcessor().also {
             it.enabled = cachedNormalizationEnabled
+            it.isLosslessOrMaxQuality = (::audioQuality.isInitialized && audioQuality == com.metrolist.music.constants.AudioQuality.MAX)
             it.setVolumeBoost(volumeBoostCached)
             cachedNormalizationGainMb?.let { gain -> it.setTargetGain(gain) }
         }
@@ -2547,17 +2554,21 @@ class MusicService :
                             measuredLufs != null -> {
                                 val loudnessDb = measuredLufs - targetLufs
                                 val targetGain = (-loudnessDb * 100.0).toInt()
-                                val clampedGain = targetGain.coerceIn(MIN_GAIN_MB, MAX_GAIN_MB)
+                                val isMaxQuality = ::audioQuality.isInitialized && audioQuality == com.metrolist.music.constants.AudioQuality.MAX
+                                val maxAllowedGain = if (isMaxQuality) 150 else MAX_GAIN_MB
+                                val clampedGain = targetGain.coerceIn(MIN_GAIN_MB, maxAllowedGain)
 
                                 cachedNormalizationGainMb = clampedGain
                                 cachedNormalizationEnabled = true
                                 if (isCrossfading) {
                                     playerNormalizationProcessors[player]?.let {
+                                        it.isLosslessOrMaxQuality = isMaxQuality
                                         it.setTargetGain(clampedGain)
                                         it.enabled = true
                                     }
                                 } else {
                                     playerNormalizationProcessors.values.forEach {
+                                        it.isLosslessOrMaxQuality = isMaxQuality
                                         it.setTargetGain(clampedGain)
                                         it.enabled = true
                                     }

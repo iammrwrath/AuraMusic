@@ -62,7 +62,18 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
         // Continuous C1 first derivative at threshold 0.85
         private const val LIMITER_THRESHOLD = 0.85
         private const val LIMITER_HEADROOM = 0.149
+        private const val MAX_STUDIO_GAIN_MB = 150 // +1.5 dB headroom ceiling for studio lossless/high-bitrate streams
     }
+
+    @Volatile
+    var isLosslessOrMaxQuality: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                updateGain()
+                Timber.tag(TAG).d("isLosslessOrMaxQuality set to: $value")
+            }
+        }
 
     @Synchronized
     fun setTargetGain(gainMb: Int) {
@@ -83,12 +94,19 @@ class VolumeNormalizationAudioProcessor : AudioProcessor {
     }
 
     private fun updateGain() {
-        val normGain = if (enabled) normalizationGainMb else 0
+        val rawNormGain = if (enabled) normalizationGainMb else 0
+        // When playing Max / Lossless studio quality, clamp upward normalization gain to prevent
+        // pushing full-scale peaks into the limiter, avoiding harmonic distortion and squashed transients.
+        val normGain = if (isLosslessOrMaxQuality && rawNormGain > MAX_STUDIO_GAIN_MB) {
+            MAX_STUDIO_GAIN_MB
+        } else {
+            rawNormGain
+        }
         val boostGainMb = (volumeBoostDb * 100.0).toInt()
         val totalMb = normGain + boostGainMb
         val linear = 10.0.pow(totalMb / 2000.0)
         currentGain = GainState(totalMb, linear)
-        Timber.tag(TAG).d("Combined gain: totalMb=$totalMb, linearGain=$linear (norm=$normGain, boost=$boostGainMb)")
+        Timber.tag(TAG).d("Combined gain: totalMb=$totalMb, linearGain=$linear (norm=$normGain, rawNorm=$rawNormGain, boost=$boostGainMb, studio=$isLosslessOrMaxQuality)")
     }
 
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {

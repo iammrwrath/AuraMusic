@@ -44,6 +44,19 @@ private val AURAMUSIC_STATIC_CHANGELOG = listOf(
     ReleaseInfo(
         tagName = BuildConfig.VERSION_NAME,
         versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
+        releaseDate = "2026-11-12",
+        description = """
+## 🎧 AuraMusic v13.8.47 - Lossless Audio Normalization & Distortion Protection
+
+### 🎧 Audio & Playback Enhancements
+- **Lossless Headroom Protection**: Added adaptive headroom protection for Max / Lossless studio quality and high-bitrate streams in `VolumeNormalizationAudioProcessor` and `MusicService`.
+- **Eliminated Soft-Knee Limiter Distortion**: Constrained upward normalization gain under Max / Lossless quality so full-scale studio transients never overdrive the soft-knee limiter into harsh distortion.
+""".trimIndent(),
+        assets = emptyList()
+    ),
+    ReleaseInfo(
+        tagName = BuildConfig.VERSION_NAME,
+        versionName = "AuraMusic ${BuildConfig.VERSION_NAME}",
         releaseDate = "2026-11-08",
         description = """
 ## 🐛 AuraMusic v13.8.46 - Playback, InnerTube & UI Stability

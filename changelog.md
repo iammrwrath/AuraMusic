@@ -1,3 +1,15 @@
+---v13.8.47
+
+# AuraMusic v13.8.47 - Lossless Audio Normalization & Distortion Protection
+
+This release eliminates audio clipping and distortion when using Max / Lossless studio audio quality alongside loud audio normalization.
+
+### 🎧 Audio & Playback Enhancements
+- **Lossless Headroom Protection**: Introduced adaptive headroom protection for Max / Lossless studio-quality and high-bitrate streams in `VolumeNormalizationAudioProcessor` and `MusicService`.
+- **Eliminated Soft-Knee Limiter Distortion**: Constrained upward normalization gain under Max / Lossless quality so high dynamic range studio tracks never overdrive the soft-knee limiter, preserving uncompressed transients and eliminating harsh saturation.
+
+~ @iammrwrath
+
 ---v13.8.46
 
 # AuraMusic v13.8.46 - Playback, InnerTube & UI Stability
