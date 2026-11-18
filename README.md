@@ -27,6 +27,11 @@
 
 ---
 
+## ⚠️ Project Status & Known Issues
+
+> [!NOTE]
+> **Active Development / Alpha Notice**: AuraMusic is in active, early development. You may encounter bugs, quirks, or unexpected edge cases as features evolve. If you run into issues or have feedback, please feel free to open an issue on the [GitHub Issues](https://github.com/iammrwrath/AuraMusic/issues) page to help improve the project!
+
 ## 🎧 Key Features
 
 ### 🔴 Nothing OS (Dot Matrix) Mode
